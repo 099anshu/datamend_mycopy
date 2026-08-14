@@ -1,37 +1,113 @@
+````markdown
 # ml-service
 
-FastAPI anomaly-detection service backed by TSDB datasets and the TimeRCD
-zero-shot detector.
+FastAPI anomaly-detection service using TSDB datasets and the TimeRCD detector.
+
+## Setup
+
+```bash
+uv sync
+````
+
+Start the API:
+
+```bash
+uv run uvicorn main:app --reload
+```
+
+API:
+
+```text
+http://localhost:8000
+```
 
 ## Endpoints
 
-- `POST /api/v1/analyze` — run detection and return anomalies above a threshold.
-- `POST /api/v1/scores` — run detection and return a per-timestamp score series.
+* `POST /api/v1/analyze` — detect anomalies above a threshold.
+* `POST /api/v1/scores` — return anomaly scores for every timestamp.
 
-## Missing value handling
+## Datasets
 
-TimeRCD does not support NaNs, so missing values must be handled explicitly.
-An optional `missingValueHandling` object selects the strategy:
+Datasets are loaded using [TSDB](https://github.com/WenjieDu/TSDB).
 
-- `reject` (default) — if missing values are present, the request fails with
-  HTTP 400 explaining that an imputation strategy must be selected.
-- `ffill` — forward-fill (leading NaNs back-filled).
-- `bfill` — backward-fill (trailing NaNs forward-filled).
-- `mean` — fill with the per-column mean.
-- `interpolate` — linear interpolation (edges filled).
+Example dataset:
 
-No imputation is ever performed automatically, and no `0` fallback is applied.
-When the data has no missing values, the data passes through unchanged. The
-effective strategy is reported in the response as `missingValueHandling`.
-Preprocessing always operates on a copy; original TSDB values are never
-modified.
+```text
+ETTh1
+```
 
-## Example: analyze with PyGrinder corruption and explicit imputation
+TSDB downloads and caches datasets automatically.
 
-Corruption is optional. When enabled, PyGrinder introduces missingness into a
-copy of the data before scoring, the actual missing rate is reported, and the
-original TSDB values are never modified. After corruption you must choose how
-missing values are handled:
+## Missing Value Handling
+
+TimeRCD does not support NaN values, so missing values must be handled explicitly.
+
+Supported strategies:
+
+* `reject` — default; returns HTTP 400 if NaNs are present.
+* `ffill` — forward-fill, then back-fill leading NaNs.
+* `bfill` — backward-fill, then forward-fill trailing NaNs.
+* `mean` — per-column mean.
+* `interpolate` — linear interpolation with edge filling.
+
+No missing-value handling is performed automatically.
+
+Example:
+
+```json
+{
+  "missingValueHandling": {
+    "strategy": "ffill"
+  }
+}
+```
+
+## PyGrinder Corruption
+
+[PyGrinder](https://github.com/WenjieDu/PyGrinder) can optionally introduce synthetic missing values.
+
+Supported methods:
+
+```text
+mcar
+mar_logistic
+mnar_x
+mnar_t
+mnar_nonuniform
+rdo
+seq_missing
+block_missing
+```
+
+Example:
+
+```json
+{
+  "corruption": {
+    "enabled": true,
+    "method": "mcar",
+    "params": {
+      "p": 0.1
+    }
+  },
+  "missingValueHandling": {
+    "strategy": "ffill"
+  }
+}
+```
+
+The response reports the actual missing rate:
+
+```json
+{
+  "missingRate": 0.1003,
+  "missingValueHandling": "ffill"
+}
+```
+
+Original TSDB data is never modified.
+
+## Example Request
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/analyze \
@@ -53,20 +129,55 @@ curl -X POST http://localhost:8000/api/v1/analyze \
   }'
 ```
 
-Response includes `missingRate` with the actual missing rate and
-`missingValueHandling` with the effective strategy:
+## Evaluation
 
-```json
-{
-  "analysisId": "ett-001",
-  "status": "COMPLETED",
-  "detector": "timercd",
-  "anomalies": [],
-  "missingRate": 0.1003,
-  "missingValueHandling": "ffill"
-}
+A basic TimeRCD evaluation can be run with:
+
+```bash
+uv run python -m evaluation.evaluate_timercd \
+  --dataset ETTh1 \
+  --anomaly-rate 0.01 \
+  --seed 0
 ```
 
-Supported corruption methods: `mcar`, `mar_logistic`, `mnar_x`, `mnar_t`,
-`mnar_nonuniform`, `rdo`, `seq_missing`, `block_missing`. Invalid methods,
-parameters, or missing-value strategies return HTTP 400.
+With 10% MCAR missingness:
+
+```bash
+uv run python -m evaluation.evaluate_timercd \
+  --dataset ETTh1 \
+  --anomaly-rate 0.01 \
+  --seed 0 \
+  --missingness mcar \
+  --p 0.10 \
+  --strategy ffill
+```
+
+The evaluation reports:
+
+```text
+Precision
+Recall
+F1
+PR-AUC
+ROC-AUC
+```
+
+## Testing
+
+Run all tests:
+
+```bash
+uv run pytest -q
+```
+
+Run evaluation tests:
+
+```bash
+uv run pytest evaluation -q
+```
+
+Run API and corruption tests:
+
+```bash
+uv run pytest test_corruption.py test_api.py -q
+```
