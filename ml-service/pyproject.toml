@@ -9,6 +9,7 @@ dependencies = [
     "scikit-learn>=1.3",
     "python-multipart>=0.0.9",
     "time-rcd @ git+https://github.com/thu-sail-lab/Time-RCD.git",
+    "tsdb>=0.8",
 ]
 
 [tool.uv]

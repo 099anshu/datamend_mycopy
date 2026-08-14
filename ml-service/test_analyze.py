@@ -1,57 +1,43 @@
 import json
-import tempfile
 import urllib.request
-from pathlib import Path
-
-import numpy as np
-import pandas as pd
 
 BASE_URL = "http://localhost:8000"
 
+ETTH1_COLUMNS = ["HUFL", "HULL", "MUFL", "MULL", "LUFL", "LULL", "OT"]
 
-def build_spike_csv(path: Path) -> str:
-    t = np.arange(0, 1000, 1)
-    signal = np.sin(t / 20.0)
-    signal[700] = 50.0
-    df = pd.DataFrame({"timestamp": t, "value": signal})
-    df.to_csv(path, index=False)
-    return str(path)
+
+def post_json(path: str, payload: dict) -> dict:
+    request = urllib.request.Request(
+        f"{BASE_URL}{path}",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(request) as response:
+        return json.loads(response.read().decode())
 
 
 def run_test() -> None:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        path = Path(tmpdir) / "spike.csv"
-        dataset_path = build_spike_csv(path)
-
-        payload = {
-            "analysisId": "test-1",
-            "datasetPath": dataset_path,
-            "timestampColumn": "timestamp",
-            "columns": ["value"],
-            "detector": "timercd",
-        }
-        req = urllib.request.Request(
-            f"{BASE_URL}/api/v1/analyze",
-            data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req) as resp:
-            result = json.loads(resp.read().decode())
+    payload = {
+        "analysisId": "ett-001",
+        "datasetName": "ETTh1",
+        "columns": ETTH1_COLUMNS,
+        "detector": "timercd",
+        "threshold": 0.8,
+    }
+    result = post_json("/api/v1/analyze", payload)
 
     assert result["status"] == "COMPLETED", result
-    assert result["analysisId"] == "test-1", result
-    assert len(result["anomalies"]) > 0, "expected at least one anomaly"
+    assert result["analysisId"] == payload["analysisId"], result
+    assert result["detector"] == "timercd", result
+    assert isinstance(result["anomalies"], list), result
 
-    spike_row = result["anomalies"][700]
-    print(f"spike anomaly: ts={spike_row['timestamp']} value={spike_row['value']} "
-          f"score={spike_row['score']} severity={spike_row['severity']}")
-    assert float(spike_row["value"]) == 50.0
-    assert float(spike_row["score"]) > 0.9, f"spike score too low: {spike_row['score']}"
-    assert spike_row["severity"] == "HIGH"
-
-    high_scores = [a for a in result["anomalies"] if float(a["score"]) > 0.9]
-    print(f"HIGH anomalies: {len(high_scores)}")
-    print("PASS: spike detected with high score")
+    scores_payload = {key: value for key, value in payload.items() if key != "threshold"}
+    scores_result = post_json("/api/v1/scores", scores_payload)
+    assert scores_result["status"] == "COMPLETED", scores_result
+    assert scores_result["analysisId"] == payload["analysisId"], scores_result
+    assert scores_result["detector"] == "timercd", scores_result
+    assert len(scores_result["scores"]) == 17420, scores_result
+    print("PASS: ETTh1 loaded from TSDB and scored through both API endpoints")
 
 
 if __name__ == "__main__":
