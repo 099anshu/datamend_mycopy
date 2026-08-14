@@ -10,6 +10,12 @@ dependencies = [
     "python-multipart>=0.0.9",
     "time-rcd @ git+https://github.com/thu-sail-lab/Time-RCD.git",
     "tsdb>=0.8",
+    "pygrinder>=0.7",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
 ]
 
 [tool.uv]

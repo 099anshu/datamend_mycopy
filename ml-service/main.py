@@ -1,9 +1,17 @@
 from datetime import datetime, timezone
-from typing import Dict, List, Type
+from typing import Dict, List, Optional, Type
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 
+from corruption.pygrinder import (
+    CorruptionConfigError,
+    MissingValueHandlingError,
+    SUPPORTED_STRATEGIES,
+    apply_corruption,
+    calc_missing_rate,
+    handle_missing_values,
+)
 from datasets.tsdb_loader import TsdbLoadError, load_tsdb_dataset
 from detectors.base import AnomalyDetector
 from detectors.timercd import TimeRCDDetector
@@ -42,7 +50,9 @@ def _severity(score: float) -> str:
     return "LOW"
 
 
-def _load_analysis_data(request: AnalysisRequest) -> tuple[pd.DataFrame, object, List[datetime]]:
+def _load_analysis_data(
+    request: AnalysisRequest,
+) -> tuple[pd.DataFrame, object, List[datetime], Optional[float], str]:
     try:
         df = load_tsdb_dataset(request.datasetName)
     except ValueError as exc:
@@ -66,15 +76,42 @@ def _load_analysis_data(request: AnalysisRequest) -> tuple[pd.DataFrame, object,
         for timestamp in df.index.to_pydatetime().tolist()
     ]
 
-    scores = _get_detector(request.detector).detect(data)
+    missing_rate = None
+    data_with_nans = data
+    if request.corruption is not None and request.corruption.enabled:
+        try:
+            data_with_nans = apply_corruption(
+                data, request.corruption.method, request.corruption.params
+            )
+            missing_rate = calc_missing_rate(data_with_nans)
+        except CorruptionConfigError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    strategy = "reject"
+    if request.missingValueHandling is not None:
+        strategy = request.missingValueHandling.strategy
+    if strategy not in SUPPORTED_STRATEGIES:
+        supported = ", ".join(sorted(SUPPORTED_STRATEGIES))
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown missing-value handling strategy {strategy!r}. "
+            f"Supported strategies: {supported}",
+        )
+
+    try:
+        detector_input = handle_missing_values(data_with_nans, strategy)
+    except MissingValueHandlingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    scores = _get_detector(request.detector).detect(detector_input)
     if len(scores) != len(df):
         raise HTTPException(status_code=500, detail="Detector returned a score count that does not match the dataset")
-    return df, scores, timestamps
+    return df, scores, timestamps, missing_rate, strategy
 
 
-@app.post("/api/v1/analyze", response_model=AnalyzeResponse)
+@app.post("/api/v1/analyze", response_model=AnalyzeResponse, response_model_exclude_none=True)
 def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
-    df, scores, timestamps = _load_analysis_data(request)
+    df, scores, timestamps, missing_rate, strategy = _load_analysis_data(request)
     data = df[request.columns].to_numpy(dtype=float)
     anomalies = []
     for i, score in enumerate(scores):
@@ -97,12 +134,14 @@ def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
         status="COMPLETED",
         detector=request.detector,
         anomalies=anomalies,
+        missingRate=missing_rate,
+        missingValueHandling=strategy,
     )
 
 
-@app.post("/api/v1/scores", response_model=ScoresResponse)
+@app.post("/api/v1/scores", response_model=ScoresResponse, response_model_exclude_none=True)
 def scores(request: ScoresRequest) -> ScoresResponse:
-    df, detector_scores, timestamps = _load_analysis_data(request)
+    df, detector_scores, timestamps, missing_rate, strategy = _load_analysis_data(request)
     series = []
     for i, score in enumerate(detector_scores):
         score = float(score)
@@ -120,4 +159,6 @@ def scores(request: ScoresRequest) -> ScoresResponse:
         status="COMPLETED",
         detector=request.detector,
         scores=series,
+        missingRate=missing_rate,
+        missingValueHandling=strategy,
     )

@@ -1,7 +1,17 @@
 from datetime import datetime
-from typing import Dict, List, Literal
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+
+class CorruptionRequest(BaseModel):
+    enabled: bool
+    method: str
+    params: Dict[str, Any] = {}
+
+
+class MissingValueHandling(BaseModel):
+    strategy: str = "reject"
 
 
 class AnalysisRequest(BaseModel):
@@ -9,6 +19,8 @@ class AnalysisRequest(BaseModel):
     datasetName: str
     columns: List[str]
     detector: str
+    corruption: Optional[CorruptionRequest] = None
+    missingValueHandling: Optional[MissingValueHandling] = None
 
 
 class AnalyzeRequest(AnalysisRequest):
@@ -32,6 +44,8 @@ class AnalyzeResponse(BaseModel):
     status: Literal["COMPLETED"]
     detector: str
     anomalies: List[Anomaly]
+    missingRate: Optional[float] = None
+    missingValueHandling: Optional[str] = None
 
 
 class TimestampScore(BaseModel):
@@ -46,3 +60,5 @@ class ScoresResponse(BaseModel):
     status: Literal["COMPLETED"]
     detector: str
     scores: List[TimestampScore]
+    missingRate: Optional[float] = None
+    missingValueHandling: Optional[str] = None
