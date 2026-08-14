@@ -1,0 +1,22 @@
+[project]
+name = "ml-service"
+version = "0.1.0"
+requires-python = "==3.10.*"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pandas>=2.0",
+    "scikit-learn>=1.3",
+    "python-multipart>=0.0.9",
+    "time-rcd @ git+https://github.com/thu-sail-lab/Time-RCD.git",
+]
+
+[tool.uv]
+package = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true

@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/timeseries
+    username: dev
+    password: dev
+  flyway:
+    enabled: true
+
+ml-service:
+  base-url: http://localhost:8000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
