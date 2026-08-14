@@ -26,6 +26,34 @@ http://localhost:8000
 * `POST /api/v1/analyze` — detect anomalies above a threshold.
 * `POST /api/v1/scores` — return anomaly scores for every timestamp.
 
+## TimeRCD Zero-Shot Inference
+
+TimeRCD is used as a **pretrained, zero-shot anomaly detector**. It is never
+trained or fine-tuned on the target dataset. The anomaly score is the
+**anomalous-class probability** produced by TimeRCD's anomaly head (the
+reconstruction head is not used for scoring), computed per timestep in
+`[0, 1]`. Thresholding is applied separately in the API layer:
+`anomaly = score >= threshold`.
+
+Configuration (set before starting the server):
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `TIMERCD_CHECKPOINT_PATH` | unset | Path to a local `.pth` checkpoint. When set, the detector loads it via `from_local`; a missing file raises `FileNotFoundError`. When unset, the packaged Hugging Face `from_pretrained` default (`thu-sail-lab/Time-RCD`) is used. |
+| `TIMERCD_WIN_SIZE` | `5000` | Context window length in timesteps (matches the TimeRCD paper's main evaluation setup). Sequences shorter than the window use their full length. |
+
+Example:
+
+```bash
+# Use a local checkpoint with a 5000-timestep window
+TIMERCD_CHECKPOINT_PATH=/path/to/pretrain_checkpoint_best_multi.pth \
+TIMERCD_WIN_SIZE=5000 \
+uv run uvicorn main:app
+```
+
+Because the detector reads these variables when it is first constructed, set
+them before starting the server (or restart the server to apply changes).
+
 ## Datasets
 
 Datasets are loaded using [TSDB](https://github.com/WenjieDu/TSDB).
@@ -180,4 +208,10 @@ Run API and corruption tests:
 
 ```bash
 uv run pytest test_corruption.py test_api.py -q
+```
+
+Run TimeRCD zero-shot verification tests:
+
+```bash
+uv run pytest detectors -q
 ```
