@@ -2,7 +2,7 @@ spring:
   application:
     name: backend
   datasource:
-    url: jdbc:postgresql://localhost:5432/timeseries
+    url: jdbc:postgresql://localhost:5433/timeseries
     username: dev
     password: dev
   flyway:
