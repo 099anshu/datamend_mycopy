@@ -46,13 +46,36 @@ A **modular monolith**, not microservices: one repository, one shared database, 
 
 ## Setup
 
-### 1. Database
+### Option A: Docker PostgreSQL (recommended, port 5433)
 
 ```sh
 docker compose up -d
 ```
 
 Postgres starts on `localhost:5433` with database `timeseries`, user `dev`, password `dev`. Data persists in the `pgdata` named volume.
+
+### Option B: Local PostgreSQL (port 5432)
+
+Install PostgreSQL locally, then run with the `local` profile:
+
+```sh
+cd backend
+SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
+```
+
+Defaults for local profile: `localhost:5432`, database `timeseries`, user `postgres`, password `postgres`.
+
+**Override via environment variables** (works with both options):
+
+```sh
+export DB_URL=jdbc:postgresql://localhost:5432/timeseries
+export DB_USER=postgres
+export DB_PASSWORD=your_password
+cd backend
+./mvnw spring-boot:run
+```
+
+Required variables: `DB_URL`, `DB_USER`, `DB_PASSWORD`.
 
 ### 2. Python ml-service (port 8000)
 
