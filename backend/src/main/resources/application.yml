@@ -7,6 +7,13 @@ spring:
     password: ${DB_PASSWORD:dev}
   flyway:
     enabled: true
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
 
 ml-service:
   base-url: http://localhost:8000

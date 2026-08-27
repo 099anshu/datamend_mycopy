@@ -65,7 +65,7 @@ def inject_spike(
     duration: int,
     magnitude: float,
     direction: Literal["up", "down"] = "up",
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.n3darray, np.ndarray]:
     """Inject spike anomaly (point or short-duration)."""
     result = series.copy()
     labels = np.zeros_like(series, dtype=int)
