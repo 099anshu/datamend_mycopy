@@ -1,11 +1,11 @@
 # DataMend
 
-**DataMend** is a modular time-series anomaly detection platform. It combines automated dataset acquisition via **TSDB**, synthetic corruption injection via **PyGrinder**, zero-shot foundation model anomaly detection via **TimeRCD**, and a **Next.js 14** visualization dashboard with real-time **Server-Sent Events (SSE)**.
+**DataMend** is a modular time-series anomaly detection platform. It combines automated dataset acquisition via **TSDB**, synthetic corruption injection via **PyGrinder**, zero-shot foundation model anomaly detection via **TimeRCD**, and a high-performance **Next.js 14** visualization dashboard with synchronized **Apache ECharts**, **Zustand**, **TanStack Query**, and real-time **Server-Sent Events (SSE)**.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                    Next.js 14 Web Frontend (:3000)                     │
-│  Interactive Multi-Series, Anomaly Heatmaps, Observable Deltas, SSE    │
+│    Apache ECharts Sync · Zustand · TanStack Query · Zod Validation     │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │  POST /api/v1/ml/analyze
                                     │  POST /api/v1/ml/scores
@@ -32,8 +32,8 @@
 
 | Layer | Directory | Technology | Role & Key Capabilities |
 |---|---|---|---|
-| **Frontend** | `frontend/` | Next.js 14, TypeScript, Recharts | Interactive time-series exploration, anomaly overlays, score distribution, and live SSE progress tracking. |
-| **Backend Core** | `backend/` | Spring Boot 3 (Java 17, Maven) | Modular dataset provider layer, asynchronous job orchestration, SSE broadcasting, and Flyway migrations. |
+| **Frontend** | `frontend/` | Next.js 14, TypeScript, Apache ECharts, Recharts, Zustand, TanStack Query, Zod, Tailwind CSS | High-frequency multivariate time-series charting, synchronized multi-chart zoom (`echarts.connect`), client-side $O(N)$ sliding windows, resilient SSE subscriptions, and persistent pipeline configuration. |
+| **Backend Core** | `backend/` | Spring Boot 3 (Java 17, Maven) | Modular dataset provider layer, asynchronous job orchestration, SSE broadcasting (`SseEmitter`), and Flyway migrations. |
 | **ML Service** | `ml-service/` | Python 3.10 (uv, FastAPI, PyTorch) | Zero-shot TimeRCD detector inference, TSDB automatic dataset fetching, PyGrinder missingness injection, and MVH imputation. |
 | **Database** | — | PostgreSQL 16 (Docker) | Relational persistence of datasets, analysis job states, and detected anomaly logs. |
 | **Legacy GUI** | `backend/src/main/resources/static/` | Vanilla JS / HTML | Static developer testing UI with asynchronous SSE/polling support. |
@@ -87,7 +87,7 @@ npm run dev
 1. **Explore Time-Series & Initial Scoring**:
    - The frontend calls `POST /api/v1/ml/scores` with the chosen dataset and columns.
    - The ML service loads the time-series via **TSDB**, applies optional corruption & missing-value handling, and executes continuous TimeRCD scoring.
-   - Raw timestamps, feature values, and per-step anomaly scores are rendered immediately on the dashboard.
+   - Raw timestamps, feature values, and per-step anomaly scores are validated via **Zod** and cached in **TanStack Query**.
 
 2. **Trigger Asynchronous Anomaly Detection**:
    - The user clicks **"Run Anomaly Detection"**, sending `POST /api/v1/ml/analyze`.
@@ -95,9 +95,9 @@ npm run dev
    - Spring Boot returns `{ "analysisId": "...", "status": "RUNNING" }` immediately.
 
 3. **Real-Time Streaming via Server-Sent Events (SSE)**:
-   - The frontend connects to `GET /api/v1/analyses/{id}/events` via an `EventSource`.
+   - The frontend connects to `GET /api/v1/analyses/{id}/events` via `useAnalysisSSE`.
    - When TimeRCD inference completes, Spring Boot persists all detected anomalies into PostgreSQL and broadcasts the completed payload over SSE.
-   - Fallback polling (`GET /api/v1/analyses/{id}`) is activated automatically if the browser disconnects.
+   - Fallback polling (`GET /api/v1/analyses/{id}`) is activated automatically if the browser SSE disconnects.
 
 ---
 
@@ -112,17 +112,18 @@ npm run dev
 
 ---
 
-## Time-Series Visualization Capabilities
+## Time-Series Visualization & Analytics Capabilities
 
 Inspired by ObservableHQ & Python Time-Series visualization standards:
 
-- **Multivariate Sensor Stream with Anomaly Overlay**: Interactive multi-line chart supporting zooming, panning (Brush), and severity markers (Rose = HIGH, Amber = MEDIUM, Sky = LOW).
+- **Multivariate Sensor Stream with Anomaly Overlay (Apache ECharts)**: Interactive multi-line chart supporting LTTB sampling, zooming, pan sliders, channel isolation, and severity markers.
+- **Cross-Chart Zoom Synchronization (`echarts.connect`)**: Synchronizes zoom, pan, and cursor brush across Multivariate Series, Anomaly Score Curve, and Baseline Deviation charts.
 - **Observable Baseline Deviation Chart**: Visualizes true vertical differences $\Delta(t) = y(t) - \bar{y}_{SMA}(t)$ on a zero-aligned baseline rather than optical curvature.
-- **Dynamic Rolling Simple Moving Average (SMA)**: User-selectable smoothing window (6h, 12h, 24h, 48h, 7d).
+- **Dynamic Rolling Simple Moving Average (SMA)**: Linear $O(N \cdot \text{cols})$ client-side sliding window smoothing (6, 12, 24, 48, 168 steps).
 - **TimeRCD Anomaly Score Curve**: Real-time visualization of model confidence score alongside the active decision threshold boundary.
 - **Feature × Time Anomaly Heatmap**: Dense spatio-temporal matrix exposing multi-channel anomaly clusters.
 - **Severity & Channel Distributions**: Donut and bar charts showing anomaly classification proportions.
-- **Incident Inspection Table**: Searchable, filterable log with JSON export for report generation.
+- **Incident Inspection Table**: Searchable, filterable log with pagination and JSON export for report generation.
 
 ---
 
@@ -162,11 +163,15 @@ DataMend/
 ├── frontend/                             # Next.js 14 Dashboard Application
 │   ├── src/
 │   │   ├── app/                          # App Router (page.tsx, layout.tsx, globals.css)
-│   │   ├── components/                   # Recharts visualizations & interactive controls
-│   │   ├── lib/                          # API client, SSE subscriber, transform utils
-│   │   └── types/                        # Strict TypeScript data models
-│   ├── package.json                      # Next.js, React 18, Recharts dependencies
-│   └── tsconfig.json                     # TypeScript strict configuration
+│   │   ├── features/
+│   │   │   ├── analysis/                 # Zustand store, TanStack Query API, Zod schemas, SSE hook
+│   │   │   ├── data/                     # O(N) rolling window & tolerant timestamp matching hooks
+│   │   │   └── visualization/            # ECharts/Recharts chart components & sync hooks
+│   │   ├── shared/                       # Reusable UI primitives (Panel, ChartPanel, Button, Chip)
+│   │   └── lib/                          # Preset configurations and formatting helpers
+│   ├── package.json                      # Next.js, ECharts, Recharts, Zustand, TanStack Query, Zod
+│   ├── tailwind.config.ts                # Design tokens & color system
+│   └── tsconfig.json                     # Strict TypeScript configuration
 ├── ml-service/                           # Python 3.10 FastAPI ML Service
 │   ├── main.py                           # FastAPI application endpoints
 │   ├── detectors/                        # TimeRCD zero-shot inference engine

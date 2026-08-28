@@ -1,29 +1,19 @@
 'use client';
 
 import React from 'react';
-import {
-  Sliders,
-  Play,
-  RotateCcw,
-  Zap,
-  BarChart3,
-} from 'lucide-react';
-import {
-  AnalysisRequestPayload,
-  CorruptionMethod,
-  MissingValueStrategy,
-} from '@/types/api';
+import { Sliders } from 'lucide-react';
+import { AnalysisRequestPayload, CorruptionMethod, MissingValueStrategy } from '../services/schemas';
+import { useAnalysisConfig } from '../hooks/useAnalysisConfig';
 import { CORRUPTION_PARAM_CONFIGS, DATASET_PRESETS } from '@/lib/config';
-import { usePipelineConfig } from '@/hooks/usePipelineConfig';
+import { Panel } from '@/shared/ui';
 
-interface ConfigSidebarProps {
+interface AnalysisConfigProps {
   onFetchScores: (payload: AnalysisRequestPayload) => void;
   onRunAnalyze: (payload: AnalysisRequestPayload) => void;
   isBusy: boolean;
-  activeStatus: string;
 }
 
-export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
+export const AnalysisConfig: React.FC<AnalysisConfigProps> = ({
   onFetchScores,
   onRunAnalyze,
   isBusy,
@@ -47,33 +37,18 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
     handleParamChange,
     handleApplyPreset,
     buildPayload,
-    handleReset,
-  } = usePipelineConfig();
+  } = useAnalysisConfig();
 
   return (
-    <aside
-      className="panel"
-      role="region"
-      aria-label="Pipeline Configuration"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: 'fit-content',
-        position: 'sticky',
-        top: 68,
-      }}
+    <Panel
+      title="Parameters"
+      icon={<Sliders size={15} />}
+      bodyClassName=""
+      style={{ overflow: 'visible' }}
     >
-      <div className="panel-header">
-        <div className="panel-header-title">
-          <Sliders size={15} />
-          <span>Parameters</span>
-        </div>
-
-      </div>
-
-      <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* Dataset Selection */}
-        <div className="form-group">
+        <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label" htmlFor="dataset-input">
             Time-Series Dataset (TSDB)
           </label>
@@ -83,8 +58,7 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
             className="form-input"
             value={datasetName}
             onChange={(e) => setDatasetName(e.target.value)}
-            placeholder="e.g. ETTh1, ETTm1, electricity"
-            aria-label="Dataset Name"
+            placeholder="e.g. ETTh1, ETTm1"
           />
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
             {DATASET_PRESETS.map((p) => {
@@ -94,16 +68,17 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
                   key={p.name}
                   type="button"
                   onClick={() => handleApplyPreset(p)}
-                  aria-label={`Apply ${p.name} preset`}
                   style={{
-                    backgroundColor: isSelected ? '#1c4b5a' : '#ffffff',
-                    border: `1px solid ${isSelected ? '#1c4b5a' : 'var(--border)'}`,
-                    color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                    padding: '2px 8px',
                     borderRadius: 3,
-                    padding: '2px 6px',
                     fontSize: '0.6875rem',
-                    fontWeight: 600,
+                    fontWeight: 700,
+                    border: '1px solid',
+                    borderColor: isSelected ? '#1c4b5a' : '#d7dbe0',
+                    backgroundColor: isSelected ? '#1c4b5a' : '#ffffff',
+                    color: isSelected ? '#ffffff' : '#475569',
                     cursor: 'pointer',
+                    fontFamily: 'inherit',
                   }}
                 >
                   {p.name}
@@ -113,32 +88,32 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
           </div>
         </div>
 
-        {/* Features / Columns */}
-        <div className="form-group">
+        {/* Signal Columns */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label" htmlFor="columns-input">
             Signal Columns
           </label>
           <textarea
             id="columns-input"
             className="form-input"
+            style={{ resize: 'vertical' }}
             rows={2}
             value={columnsInput}
             onChange={(e) => setColumnsInput(e.target.value)}
-            style={{ resize: 'vertical', fontSize: '0.8125rem' }}
-            aria-label="Sensor Signals"
           />
         </div>
 
-        {/* Model & Threshold */}
+        {/* Detector + Threshold */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" htmlFor="detector-select">Detector</label>
+            <label className="form-label" htmlFor="detector-select">
+              Detector
+            </label>
             <select
               id="detector-select"
               className="form-select"
               value={detector}
               onChange={(e) => setDetector(e.target.value)}
-              aria-label="Anomaly Detector Model"
             >
               <option value="timercd">TimeRCD</option>
             </select>
@@ -146,8 +121,13 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
 
           <div className="form-group" style={{ marginBottom: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="form-label" htmlFor="threshold-range">Threshold</label>
-              <span className="tabular-nums" style={{ fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 700 }}>
+              <label className="form-label" htmlFor="threshold-range">
+                Threshold
+              </label>
+              <span
+                className="tabular-nums"
+                style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1a56c4' }}
+              >
                 {threshold.toFixed(2)}
               </span>
             </div>
@@ -159,18 +139,27 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
               step="0.01"
               value={threshold}
               onChange={(e) => setThreshold(parseFloat(e.target.value))}
-              style={{ width: '100%', accentColor: 'var(--panel-header)', marginTop: 6 }}
-              aria-label="Anomaly Score Threshold"
+              style={{ width: '100%', accentColor: '#1c4b5a', marginTop: 6 }}
             />
           </div>
         </div>
 
-        <hr style={{ borderColor: 'var(--border)', borderStyle: 'solid', borderWidth: '1px 0 0 0' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid #d7dbe0', margin: 0 }} />
 
         {/* PyGrinder Corruption */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#1e293b',
+              }}
+            >
               <input
                 type="checkbox"
                 checked={corruptionEnabled}
@@ -180,34 +169,35 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
                     setMvhStrategy('ffill');
                   }
                 }}
-                style={{ accentColor: 'var(--accent)', width: 14, height: 14 }}
+                style={{ accentColor: '#1a56c4', width: 14, height: 14 }}
               />
               PyGrinder Corruption
             </label>
             {corruptionEnabled && (
-              <span className="chip chip-warning" style={{ fontSize: '0.625rem' }}>
-                ON
-              </span>
+              <span className="chip chip-warning">ON</span>
             )}
           </div>
 
           {corruptionEnabled && (
             <div
               style={{
-                backgroundColor: '#f8f9fa',
-                padding: '10px',
-                borderRadius: '4px',
-                border: '1px solid var(--border)',
+                backgroundColor: '#f8fafc',
+                padding: 10,
+                borderRadius: 4,
+                border: '1px solid #d7dbe0',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 8,
               }}
             >
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" htmlFor="corruption-method-select">Mechanism</label>
+                <label className="form-label" style={{ fontSize: '0.625rem' }} htmlFor="corruption-method-select">
+                  Mechanism
+                </label>
                 <select
                   id="corruption-method-select"
                   className="form-select"
+                  style={{ fontSize: '0.75rem', padding: '4px 8px' }}
                   value={corruptionMethod}
                   onChange={(e) => handleMethodChange(e.target.value as CorruptionMethod)}
                 >
@@ -222,11 +212,14 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
                 </select>
               </div>
 
-              {/* Dynamic Param Inputs */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 6 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 {CORRUPTION_PARAM_CONFIGS[corruptionMethod]?.map((param) => (
                   <div key={param.name}>
-                    <label className="form-label" htmlFor={`param-${param.name}`} style={{ fontSize: '0.625rem' }}>
+                    <label
+                      className="form-label"
+                      style={{ fontSize: '0.625rem' }}
+                      htmlFor={`param-${param.name}`}
+                    >
                       {param.name}
                     </label>
                     <input
@@ -236,9 +229,9 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
                       min={param.min}
                       max={param.max}
                       className="form-input tabular-nums"
+                      style={{ padding: '4px 8px', fontSize: '0.75rem' }}
                       value={corruptionParams[param.name] ?? param.default}
                       onChange={(e) => handleParamChange(param.name, parseFloat(e.target.value))}
-                      style={{ padding: '3px 6px', fontSize: '0.75rem' }}
                     />
                   </div>
                 ))}
@@ -247,8 +240,8 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
           )}
         </div>
 
-        {/* Missing Value Handling Strategy */}
-        <div className="form-group">
+        {/* Imputation Strategy */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label" htmlFor="mvh-strategy-select">
             Imputation Strategy
           </label>
@@ -266,8 +259,8 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
           </select>
         </div>
 
-        {/* Action Triggers */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button
             type="button"
             className="btn btn-secondary"
@@ -277,7 +270,6 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
           >
             1. Load Series &amp; Scores
           </button>
-
           <button
             type="button"
             className="btn btn-secondary"
@@ -285,10 +277,10 @@ export const ConfigSidebar: React.FC<ConfigSidebarProps> = ({
             disabled={isBusy}
             style={{ width: '100%' }}
           >
-            2. Run Anomaly Detection
+            2. Run Anomaly Detection (Async)
           </button>
         </div>
       </div>
-    </aside>
+    </Panel>
   );
 };

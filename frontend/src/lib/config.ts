@@ -35,7 +35,6 @@ export const DATASET_PRESETS = [
   { name: 'ETTh1', columns: 'HUFL,HULL,MUFL,MULL,LUFL,LULL,OT', desc: 'Electricity Transformer Hourly 1' },
   { name: 'ETTh2', columns: 'HUFL,HULL,MUFL,MULL,LUFL,LULL,OT', desc: 'Electricity Transformer Hourly 2' },
   { name: 'ETTm1', columns: 'HUFL,HULL,MUFL,MULL,LUFL,LULL,OT', desc: 'Electricity Transformer 15-min 1' },
-  { name: 'weather', columns: 'p,T,Tpot,Tdew,rh,VPmax,VPact,VPdef', desc: 'MPI Weather Station' },
 ];
 
 export const CHART_PALETTE = [

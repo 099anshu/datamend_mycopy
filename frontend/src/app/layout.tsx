@@ -1,5 +1,12 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { QueryProvider } from '@/shared/providers/QueryProvider';
+
+export const metadata: Metadata = {
+  title: 'DataMend | Intelligent Time-Series Anomaly Detection',
+  description:
+    'Time-series anomaly detection dashboard powered by TimeRCD zero-shot inference, PyGrinder corruption simulation, and ECharts visualization.',
+};
 
 export default function RootLayout({
   children,
@@ -9,9 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          {children}
-        </div>
+        <QueryProvider>
+          <div className="relative min-h-screen flex flex-col">{children}</div>
+        </QueryProvider>
       </body>
     </html>
   );
