@@ -1,4 +1,4 @@
-/* DataMend testing frontend - drives the Spring Boot proxy for ml-service. */
+/* DataMend testing frontend - drives the Spring Boot proxy and ML service. */
 
 const CORRUPTION_PARAMS = {
     mcar:            [{ name: "p",            value: 0.1 }],
@@ -18,6 +18,9 @@ const DEFAULTS = {
     threshold: "0.8",
     strategy: "reject",
 };
+
+let activeEventSource = null;
+let activePollInterval = null;
 
 const elements = {
     dataset: document.getElementById("dataset"),
@@ -113,12 +116,25 @@ function renderJson(data) {
     elements.jsonOutput.textContent = JSON.stringify(data, null, 2);
 }
 
+function cleanupAsyncStreams() {
+    if (activeEventSource) {
+        activeEventSource.close();
+        activeEventSource = null;
+    }
+    if (activePollInterval) {
+        clearInterval(activePollInterval);
+        activePollInterval = null;
+    }
+}
+
 function analyzeSummary(data) {
     return [
+        { key: "analysisId", value: data.id || data.analysisId || "n/a" },
         { key: "status", value: data.status },
-        { key: "anomaly count", value: Array.isArray(data.anomalies) ? data.anomalies.length : "n/a" },
-        { key: "missingRate", value: data.missingRate === undefined ? "n/a" : data.missingRate },
-        { key: "missingValueHandling", value: data.missingValueHandling === undefined ? "n/a" : data.missingValueHandling },
+        { key: "detector", value: data.detector || "n/a" },
+        { key: "anomalies count", value: Array.isArray(data.anomalies) ? data.anomalies.length : 0 },
+        { key: "startedAt", value: data.startedAt || "n/a" },
+        { key: "completedAt", value: data.completedAt || "n/a" },
     ];
 }
 
@@ -131,11 +147,126 @@ function scoresSummary(data) {
     ];
 }
 
-async function post(endpoint, payload, summaryFn) {
+async function handleAnalyze() {
+    cleanupAsyncStreams();
     setBusy(true);
-    setStatus("Requesting " + endpoint + " ...");
+    setStatus("Initiating asynchronous analysis...");
+
+    const payload = buildPayload();
     try {
-        const response = await fetch(endpoint, {
+        const response = await fetch("/api/v1/ml/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+
+        const initialBody = await response.json();
+        if (!response.ok) {
+            setStatus("HTTP " + response.status + " - " + (initialBody.detail || initialBody.error || "Analysis request failed"), true);
+            renderSummary([{ key: "HTTP status", value: response.status }]);
+            renderJson(initialBody);
+            setBusy(false);
+            return;
+        }
+
+        const analysisId = initialBody.analysisId;
+        setStatus("Analysis submitted (ID: " + analysisId + "). Listening for real-time events via SSE...");
+        renderSummary([
+            { key: "analysisId", value: analysisId },
+            { key: "status", value: "RUNNING" },
+        ]);
+        renderJson(initialBody);
+
+        let completed = false;
+
+        // Try SSE connection first
+        if (window.EventSource) {
+            const eventSource = new EventSource("/api/v1/analyses/" + encodeURIComponent(analysisId) + "/events");
+            activeEventSource = eventSource;
+
+            eventSource.addEventListener("status", (e) => {
+                const data = JSON.parse(e.data);
+                setStatus("Analysis status: " + data.status + "...");
+            });
+
+            eventSource.addEventListener("completed", (e) => {
+                completed = true;
+                const result = JSON.parse(e.data);
+                setStatus("Analysis COMPLETED! (Found " + (result.anomalies ? result.anomalies.length : 0) + " anomalies)");
+                renderSummary(analyzeSummary(result));
+                renderJson(result);
+                cleanupAsyncStreams();
+                setBusy(false);
+            });
+
+            eventSource.addEventListener("failed", (e) => {
+                completed = true;
+                const errData = JSON.parse(e.data);
+                setStatus("Analysis FAILED: " + (errData.error || "Execution error"), true);
+                renderSummary([{ key: "status", value: "FAILED" }, { key: "error", value: errData.error }]);
+                renderJson(errData);
+                cleanupAsyncStreams();
+                setBusy(false);
+            });
+
+            eventSource.onerror = () => {
+                // If SSE disconnects before completion, fallback to polling
+                if (!completed) {
+                    eventSource.close();
+                    activeEventSource = null;
+                    startPolling(analysisId);
+                }
+            };
+        } else {
+            startPolling(analysisId);
+        }
+
+    } catch (err) {
+        setStatus("Network error: " + err.message, true);
+        renderJson({ error: err.message });
+        setBusy(false);
+    }
+}
+
+function startPolling(analysisId) {
+    if (activePollInterval) return;
+    setStatus("Polling /api/v1/analyses/" + analysisId + " for results...");
+
+    activePollInterval = setInterval(async () => {
+        try {
+            const res = await fetch("/api/v1/analyses/" + encodeURIComponent(analysisId));
+            if (!res.ok) return;
+            const data = await res.json();
+
+            if (data.status === "COMPLETED") {
+                clearInterval(activePollInterval);
+                activePollInterval = null;
+                setStatus("Analysis COMPLETED! (Found " + (data.anomalies ? data.anomalies.length : 0) + " anomalies)");
+                renderSummary(analyzeSummary(data));
+                renderJson(data);
+                setBusy(false);
+            } else if (data.status === "FAILED") {
+                clearInterval(activePollInterval);
+                activePollInterval = null;
+                setStatus("Analysis FAILED", true);
+                renderSummary(analyzeSummary(data));
+                renderJson(data);
+                setBusy(false);
+            }
+        } catch (e) {
+            console.error("Polling error", e);
+        }
+    }, 1500);
+}
+
+async function handleScores() {
+    cleanupAsyncStreams();
+    setBusy(true);
+    setStatus("Requesting raw scores (/api/v1/ml/scores)...");
+    const payload = buildPayload();
+
+    try {
+        const response = await fetch("/api/v1/ml/scores", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -149,14 +280,14 @@ async function post(endpoint, payload, summaryFn) {
         }
 
         if (!response.ok) {
-            setStatus("HTTP " + response.status + " - " + (body.detail || body.error || "request failed"), true);
+            setStatus("HTTP " + response.status + " - " + (body.detail || body.error || "Scores request failed"), true);
             renderSummary([{ key: "HTTP status", value: response.status }]);
             renderJson(body);
             return;
         }
 
-        setStatus("HTTP " + response.status + " - OK");
-        renderSummary([{ key: "HTTP status", value: response.status }].concat(summaryFn(body)));
+        setStatus("HTTP " + response.status + " - OK (Fetched " + (body.scores ? body.scores.length : 0) + " timestamps)");
+        renderSummary([{ key: "HTTP status", value: response.status }].concat(scoresSummary(body)));
         renderJson(body);
     } catch (err) {
         setStatus("Network error: " + err.message, true);
@@ -168,6 +299,7 @@ async function post(endpoint, payload, summaryFn) {
 }
 
 function reset() {
+    cleanupAsyncStreams();
     elements.dataset.value = DEFAULTS.dataset;
     elements.columns.value = DEFAULTS.columns;
     elements.detector.value = DEFAULTS.detector;
@@ -189,13 +321,10 @@ function init() {
     elements.corruptionMethod.addEventListener("change", function () {
         renderCorruptionParams();
     });
-    elements.btnAnalyze.addEventListener("click", function () {
-        post("/api/v1/ml/analyze", buildPayload(), analyzeSummary);
-    });
-    elements.btnScores.addEventListener("click", function () {
-        post("/api/v1/ml/scores", buildPayload(), scoresSummary);
-    });
+    elements.btnAnalyze.addEventListener("click", handleAnalyze);
+    elements.btnScores.addEventListener("click", handleScores);
     elements.btnReset.addEventListener("click", reset);
 }
 
 document.addEventListener("DOMContentLoaded", init);
+

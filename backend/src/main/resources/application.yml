@@ -7,6 +7,17 @@ spring:
     password: ${DB_PASSWORD:dev}
   flyway:
     enabled: true
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080}
 
 ml-service:
   base-url: http://localhost:8000

@@ -11,6 +11,7 @@ dependencies = [
     "time-rcd @ git+https://github.com/thu-sail-lab/Time-RCD.git",
     "tsdb>=0.8",
     "pygrinder>=0.7",
+    "networkx>=3.0",
 ]
 
 [dependency-groups]
