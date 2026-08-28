@@ -1,7 +1,6 @@
 package com.datamend.backend.controller;
 
 import com.datamend.backend.dto.AnalysisRequestDto;
-import com.datamend.backend.dto.DatasetRequestDto;
 import com.datamend.backend.service.AnalysisProxyService;
 import com.datamend.backend.service.MlServiceException;
 import com.datamend.backend.service.orchestration.AnalysisOrchestrationService;
@@ -32,13 +31,7 @@ public class AnalysisProxyController {
     @PostMapping("/analyze")
     public ResponseEntity<Map<String, Object>> analyze(@RequestBody AnalysisRequestDto request) {
         return call(() -> {
-            DatasetRequestDto datasetRequest = new DatasetRequestDto(
-                    request.datasetName(),
-                    "uploads/" + request.datasetName(),
-                    0,
-                    request.columns().size()
-            );
-            UUID analysisId = orchestrationService.startAnalysis(datasetRequest, request);
+            UUID analysisId = orchestrationService.startAnalysis(request);
             return Map.of("analysisId", analysisId.toString(), "status", "RUNNING");
         });
     }

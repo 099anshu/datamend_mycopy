@@ -35,14 +35,14 @@ class AnalysisProxyControllerTest {
 
     @Test
     void analyzeForwardsRequestAndReturnsResponse() {
-        when(orchestrationService.startAnalysis(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(request())))
+        when(orchestrationService.startAnalysis(request()))
                 .thenReturn(java.util.UUID.randomUUID());
 
         ResponseEntity<Map<String, Object>> response = controller.analyze(request());
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("RUNNING", response.getBody().get("status"));
-        verify(orchestrationService).startAnalysis(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(request()));
+        verify(orchestrationService).startAnalysis(request());
     }
 
     @Test
@@ -59,7 +59,7 @@ class AnalysisProxyControllerTest {
 
     @Test
     void mlServiceHttpErrorIsForwarded() {
-        when(orchestrationService.startAnalysis(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(request())))
+        when(orchestrationService.startAnalysis(request()))
                 .thenThrow(new RuntimeException(
                         new MlServiceException(HttpStatus.BAD_REQUEST, "{\"detail\":\"bad strategy\"}")));
 
@@ -71,7 +71,7 @@ class AnalysisProxyControllerTest {
 
     @Test
     void mlServiceUnreachableMapsToBadGateway() {
-        when(orchestrationService.startAnalysis(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(request())))
+        when(orchestrationService.startAnalysis(request()))
                 .thenThrow(new RuntimeException(
                         new MlServiceException("ML service is unreachable at http://localhost:8000")));
 
