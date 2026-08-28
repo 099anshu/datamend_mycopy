@@ -25,6 +25,16 @@ http://localhost:8000
 
 * `POST /api/v1/analyze` — detect anomalies above a threshold.
 * `POST /api/v1/scores` — return anomaly scores for every timestamp.
+* `POST /api/v1/datasets/live` — fetch a fresh dataset from a live public API
+  (`source: "weather"` via Open-Meteo, `source: "crypto"` via CoinGecko) and
+  ingest it as a normal dataset, ready for profiling/validation/analysis.
+* `POST /api/v1/validate/suggest` — auto-detect a dataset's columns and
+  propose default rule-based validation rules (range/not-null/data-type).
+* `POST /api/v1/validate` — run rule-based validation (Objective #2: range
+  check, not-null, data type, uniqueness, cross-field) against a dataset and
+  return a `ValidationReport` with a 0–100 quality score.
+
+See `validation/rule_based.py` and `datasets/live_api_loader.py` for details.
 
 ## TimeRCD Zero-Shot Inference
 
