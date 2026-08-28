@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { DatasetSourceSchema } from '@/features/datasets/services/schemas';
+
 export const SeveritySchema = z.enum(['HIGH', 'MEDIUM', 'LOW']);
 export type Severity = z.infer<typeof SeveritySchema>;
 
@@ -41,6 +43,8 @@ export const AnalysisRequestPayloadSchema = z.object({
   datasetName: z.string(),
   columns: z.array(z.string()),
   detector: z.string(),
+  source: DatasetSourceSchema,
+  timestampColumn: z.string().nullable(),
   threshold: z.number(),
   corruption: CorruptionConfigSchema.nullable(),
   missingValueHandling: MissingValueHandlingConfigSchema,

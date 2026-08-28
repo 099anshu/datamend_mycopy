@@ -12,6 +12,8 @@ dependencies = [
     "tsdb>=0.8",
     "pygrinder>=0.7",
     "networkx>=3.0",
+    "scipy>=1.10",
+    "statsmodels>=0.14",
 ]
 
 [dependency-groups]
@@ -28,3 +30,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+

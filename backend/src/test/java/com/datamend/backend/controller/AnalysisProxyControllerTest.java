@@ -28,6 +28,8 @@ class AnalysisProxyControllerTest {
                 "ETTh1",
                 List.of("HUFL", "HULL", "MUFL", "MULL", "LUFL", "LULL", "OT"),
                 "timercd",
+                "tsdb",
+                null,
                 0.8,
                 null,
                 null);

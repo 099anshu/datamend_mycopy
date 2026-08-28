@@ -6,19 +6,19 @@ import java.util.List;
 
 /**
  * Strategy interface for resolving time-series datasets from various sources
- * (e.g. TSDB, external REST APIs, Python libraries, object storage).
+ * (e.g. TSDB, user uploads, external REST APIs, object storage).
  */
 public interface DatasetProvider {
 
     /**
-     * Source identifier (e.g. "TSDB", "EXTERNAL_API", "PYTHON_LIB").
+     * Source identifier (e.g. "TSDB", "UPLOAD", "EXTERNAL_API").
      */
     String getSourceType();
 
     /**
-     * Check if this provider supports the given dataset name or URI scheme.
+     * Check if this provider handles the given source identifier.
      */
-    boolean supports(String datasetName);
+    boolean supports(String sourceType);
 
     /**
      * Resolve a dataset entity representation with metadata.

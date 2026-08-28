@@ -39,11 +39,20 @@ export function useAnalysisConfig() {
       .map((c) => c.trim())
       .filter(Boolean);
 
+    const isUpload = store.datasetSource === 'upload';
+
     return {
       analysisId: `ui-${Date.now()}`,
-      datasetName: store.datasetName.trim() || 'ETTh1',
-      columns: columns.length > 0 ? columns : ['HUFL', 'HULL', 'MUFL', 'MULL', 'LUFL', 'LULL', 'OT'],
+      datasetName: isUpload
+        ? store.uploadedDatasetId ?? ''
+        : store.datasetName.trim() || 'ETTh1',
+      columns:
+        columns.length > 0 || isUpload
+          ? columns
+          : ['HUFL', 'HULL', 'MUFL', 'MULL', 'LUFL', 'LULL', 'OT'],
       detector: store.detector,
+      source: store.datasetSource,
+      timestampColumn: isUpload ? store.timestampColumn : null,
       threshold: store.threshold,
       corruption: store.corruptionEnabled
         ? {

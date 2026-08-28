@@ -4,8 +4,9 @@ import React from 'react';
 import { Sliders } from 'lucide-react';
 import { AnalysisRequestPayload, CorruptionMethod, MissingValueStrategy } from '../services/schemas';
 import { useAnalysisConfig } from '../hooks/useAnalysisConfig';
-import { CORRUPTION_PARAM_CONFIGS, DATASET_PRESETS } from '@/lib/config';
+import { CORRUPTION_PARAM_CONFIGS } from '@/lib/config';
 import { Panel } from '@/shared/ui';
+import { useDatasetSelection } from '@/features/datasets/hooks/useDatasetSelection';
 
 interface AnalysisConfigProps {
   onFetchScores: (payload: AnalysisRequestPayload) => void;
@@ -18,11 +19,8 @@ export const AnalysisConfig: React.FC<AnalysisConfigProps> = ({
   onRunAnalyze,
   isBusy,
 }) => {
+  const { isReady, blockingReason } = useDatasetSelection();
   const {
-    datasetName,
-    setDatasetName,
-    columnsInput,
-    setColumnsInput,
     detector,
     setDetector,
     threshold,
@@ -35,7 +33,6 @@ export const AnalysisConfig: React.FC<AnalysisConfigProps> = ({
     setMvhStrategy,
     handleMethodChange,
     handleParamChange,
-    handleApplyPreset,
     buildPayload,
   } = useAnalysisConfig();
 
@@ -47,62 +44,6 @@ export const AnalysisConfig: React.FC<AnalysisConfigProps> = ({
       style={{ overflow: 'visible' }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* Dataset Selection */}
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" htmlFor="dataset-input">
-            Time-Series Dataset (TSDB)
-          </label>
-          <input
-            id="dataset-input"
-            type="text"
-            className="form-input"
-            value={datasetName}
-            onChange={(e) => setDatasetName(e.target.value)}
-            placeholder="e.g. ETTh1, ETTm1"
-          />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-            {DATASET_PRESETS.map((p) => {
-              const isSelected = datasetName === p.name;
-              return (
-                <button
-                  key={p.name}
-                  type="button"
-                  onClick={() => handleApplyPreset(p)}
-                  style={{
-                    padding: '2px 8px',
-                    borderRadius: 3,
-                    fontSize: '0.6875rem',
-                    fontWeight: 700,
-                    border: '1px solid',
-                    borderColor: isSelected ? '#1c4b5a' : '#d7dbe0',
-                    backgroundColor: isSelected ? '#1c4b5a' : '#ffffff',
-                    color: isSelected ? '#ffffff' : '#475569',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  {p.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Signal Columns */}
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label className="form-label" htmlFor="columns-input">
-            Signal Columns
-          </label>
-          <textarea
-            id="columns-input"
-            className="form-input"
-            style={{ resize: 'vertical' }}
-            rows={2}
-            value={columnsInput}
-            onChange={(e) => setColumnsInput(e.target.value)}
-          />
-        </div>
-
         {/* Detector + Threshold */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
@@ -265,7 +206,8 @@ export const AnalysisConfig: React.FC<AnalysisConfigProps> = ({
             type="button"
             className="btn btn-secondary"
             onClick={() => onFetchScores(buildPayload())}
-            disabled={isBusy}
+            disabled={isBusy || !isReady}
+            title={blockingReason ?? undefined}
             style={{ width: '100%' }}
           >
             1. Load Series &amp; Scores
@@ -274,7 +216,8 @@ export const AnalysisConfig: React.FC<AnalysisConfigProps> = ({
             type="button"
             className="btn btn-secondary"
             onClick={() => onRunAnalyze(buildPayload())}
-            disabled={isBusy}
+            disabled={isBusy || !isReady}
+            title={blockingReason ?? undefined}
             style={{ width: '100%' }}
           >
             2. Run Anomaly Detection (Async)

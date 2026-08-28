@@ -7,6 +7,8 @@ public record AnalysisRequestDto(
         String datasetName,
         List<String> columns,
         String detector,
+        String source,
+        String timestampColumn,
         Double threshold,
         CorruptionDto corruption,
         MissingValueHandlingDto missingValueHandling) {

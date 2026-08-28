@@ -39,7 +39,7 @@ class RestClientBodyProbeTest {
             RestClient client = RestClient.builder().baseUrl(baseUrl).build();
 
             AnalysisRequestDto request = new AnalysisRequestDto(
-                    "t", "ETTh1", List.of("HUFL"), "timercd", 0.8, null, null);
+                    "t", "ETTh1", List.of("HUFL"), "timercd", "tsdb", null, 0.8, null, null);
 
             client.post()
                     .uri("/api/v1/analyze")
@@ -48,7 +48,7 @@ class RestClientBodyProbeTest {
                     .retrieve()
                     .body(Map.class);
 
-            assertEquals("{\"analysisId\":\"t\",\"datasetName\":\"ETTh1\",\"columns\":[\"HUFL\"],\"detector\":\"timercd\",\"threshold\":0.8,\"corruption\":null,\"missingValueHandling\":null}", received.toString());
+            assertEquals("{\"analysisId\":\"t\",\"datasetName\":\"ETTh1\",\"columns\":[\"HUFL\"],\"detector\":\"timercd\",\"source\":\"tsdb\",\"timestampColumn\":null,\"threshold\":0.8,\"corruption\":null,\"missingValueHandling\":null}", received.toString());
         } finally {
             server.stop(0);
         }

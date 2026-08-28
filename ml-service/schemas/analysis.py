@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from schemas.dataset import DatasetSource
+
 
 class CorruptionRequest(BaseModel):
     enabled: bool
@@ -19,6 +21,8 @@ class AnalysisRequest(BaseModel):
     datasetName: str
     columns: List[str]
     detector: str
+    source: DatasetSource = "tsdb"
+    timestampColumn: Optional[str] = None
     corruption: Optional[CorruptionRequest] = None
     missingValueHandling: Optional[MissingValueHandling] = None
 
