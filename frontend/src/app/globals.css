@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
-@theme {
-  /* Color palette */
+:root {
   --color-page: #eef0f3;
   --color-panel: #ffffff;
   --color-panel-header: #1c4b5a;
@@ -24,19 +23,11 @@
 
   --color-brand: #1a56c4;
   --color-brand-hover: #144296;
-
   --color-accent: #1a56c4;
 
-  /* Typography */
   --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-family-mono: 'JetBrains Mono', monospace;
-
-  /* Shadows */
   --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-/* CSS custom props for use in inline styles and legacy references */
-:root {
   --bg-page: #eef0f3;
   --panel-bg: #ffffff;
   --panel-header: #1c4b5a;
@@ -57,7 +48,7 @@
   --status-success: #2e7d32;
   --status-success-bg: #dcfce7;
 
-  --accent: #1a56c4;
+  --accent: #696f72;
   --accent-hover: #144296;
 }
 

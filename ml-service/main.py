@@ -21,6 +21,12 @@ from datasets.upload_store import (
     list_uploads,
     save_upload,
 )
+from datasets.ts_analysis import (
+    calculate_rolling_statistics,
+    calculate_differences,
+    scale_time_series,
+    create_interactive_data_structure,
+)
 from detectors.base import AnomalyDetector
 from detectors.timercd import TimeRCDDetector
 from schemas.dataset import (
@@ -223,3 +229,100 @@ def get_dataset(dataset_id: str) -> UploadedDatasetResponse:
         uploadedAt=datetime.fromisoformat(metadata["uploadedAt"]),
         profile=DatasetProfile.model_validate(metadata["profile"]),
     )
+
+
+@app.post("/api/v1/analysis/rolling")
+def calculate_rolling(
+    source: str = Form(...),
+    datasetName: str = Form(...),
+    columns: List[str] = Form(...),
+    window: int = Form(default=24),
+    timestampColumn: Optional[str] = Form(default=None),
+) -> Dict:
+    """Calculate rolling statistics for time series data."""
+    try:
+        df = load_dataset(source, datasetName, timestampColumn)
+    except (UnknownDatasetError, ValueError, TsdbLoadError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    missing = [column for column in columns if column not in df.columns]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing columns: {missing}")
+
+    result_df = calculate_rolling_statistics(df, window=window, columns=columns)
+    
+    # Convert to interactive format
+    interactive_data = create_interactive_data_structure(result_df, columns)
+    
+    return {
+        "status": "success",
+        "window": window,
+        "data": interactive_data,
+        "columns": columns,
+    }
+
+
+@app.post("/api/v1/analysis/differences")
+def calculate_diff(
+    source: str = Form(...),
+    datasetName: str = Form(...),
+    columns: List[str] = Form(...),
+    periods: int = Form(default=1),
+    timestampColumn: Optional[str] = Form(default=None),
+) -> Dict:
+    """Calculate differences for time series data."""
+    try:
+        df = load_dataset(source, datasetName, timestampColumn)
+    except (UnknownDatasetError, ValueError, TsdbLoadError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    missing = [column for column in columns if column not in df.columns]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing columns: {missing}")
+
+    result_df = calculate_differences(df, columns=columns, periods=periods)
+    
+    # Convert to interactive format
+    interactive_data = create_interactive_data_structure(result_df, columns)
+    
+    return {
+        "status": "success",
+        "periods": periods,
+        "data": interactive_data,
+        "columns": columns,
+    }
+
+
+@app.post("/api/v1/analysis/scale")
+def scale_data(
+    source: str = Form(...),
+    datasetName: str = Form(...),
+    columns: List[str] = Form(...),
+    method: str = Form(default="standard"),
+    timestampColumn: Optional[str] = Form(default=None),
+) -> Dict:
+    """Scale time series data using various methods."""
+    try:
+        df = load_dataset(source, datasetName, timestampColumn)
+    except (UnknownDatasetError, ValueError, TsdbLoadError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    missing = [column for column in columns if column not in df.columns]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing columns: {missing}")
+
+    if method not in ["standard", "minmax", "robust"]:
+        raise HTTPException(status_code=400, detail="Invalid scaling method. Use: standard, minmax, or robust")
+
+    result_df = scale_time_series(df, columns=columns, method=method)
+    
+    # Convert to interactive format
+    scaled_columns = [f"{col}_scaled" for col in columns]
+    interactive_data = create_interactive_data_structure(result_df, scaled_columns)
+    
+    return {
+        "status": "success",
+        "method": method,
+        "data": interactive_data,
+        "columns": scaled_columns,
+    }

@@ -78,10 +78,20 @@ def _profile_column(series: pd.Series, is_timestamp: bool) -> ColumnProfile:
     return profile
 
 
-def profile_dataframe(df: pd.DataFrame, timestamp_column: Optional[str] = None) -> DatasetProfile:
-    """Describe a raw uploaded frame: column kinds, missingness, ranges, preview rows."""
-    if timestamp_column is None:
+def profile_dataframe(df: pd.DataFrame, timestamp_column: Optional[str] = None, is_ts_file: bool = False) -> DatasetProfile:
+    """Describe a raw uploaded frame: column kinds, missingness, ranges, preview rows.
+    
+    Args:
+        df: DataFrame to profile
+        timestamp_column: Optional timestamp column name
+        is_ts_file: Whether this is a .ts file (timestamps are auto-generated)
+    """
+    if timestamp_column is None and not is_ts_file:
         timestamp_column = detect_timestamp_column(df)
+    
+    # For .ts files, timestamp is auto-generated and not in the columns
+    if is_ts_file:
+        timestamp_column = "auto_generated"
 
     columns = [_profile_column(df[column], column == timestamp_column) for column in df.columns]
     signal_columns: List[str] = [column.name for column in columns if column.kind == "numeric"]

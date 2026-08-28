@@ -76,3 +76,72 @@ export function useUploadedDatasetsQuery() {
     staleTime: 15000,
   });
 }
+
+export async function calculateRollingApi(
+  source: string,
+  datasetName: string,
+  columns: string[],
+  window: number = 24,
+  timestampColumn?: string
+): Promise<{ status: string; window: number; data: any[]; columns: string[] }> {
+  const form = new FormData();
+  form.append('source', source);
+  form.append('datasetName', datasetName);
+  columns.forEach(col => form.append('columns', col));
+  form.append('window', window.toString());
+  if (timestampColumn) {
+    form.append('timestampColumn', timestampColumn);
+  }
+
+  const res = await fetch(`${API_BASE}/api/v1/analysis/rolling`, { method: 'POST', body: form });
+  if (!res.ok) {
+    throw await parseError(res, 'Failed to calculate rolling statistics');
+  }
+  return res.json();
+}
+
+export async function calculateDifferencesApi(
+  source: string,
+  datasetName: string,
+  columns: string[],
+  periods: number = 1,
+  timestampColumn?: string
+): Promise<{ status: string; periods: number; data: any[]; columns: string[] }> {
+  const form = new FormData();
+  form.append('source', source);
+  form.append('datasetName', datasetName);
+  columns.forEach(col => form.append('columns', col));
+  form.append('periods', periods.toString());
+  if (timestampColumn) {
+    form.append('timestampColumn', timestampColumn);
+  }
+
+  const res = await fetch(`${API_BASE}/api/v1/analysis/differences`, { method: 'POST', body: form });
+  if (!res.ok) {
+    throw await parseError(res, 'Failed to calculate differences');
+  }
+  return res.json();
+}
+
+export async function scaleDataApi(
+  source: string,
+  datasetName: string,
+  columns: string[],
+  method: string = 'standard',
+  timestampColumn?: string
+): Promise<{ status: string; method: string; data: any[]; columns: string[] }> {
+  const form = new FormData();
+  form.append('source', source);
+  form.append('datasetName', datasetName);
+  columns.forEach(col => form.append('columns', col));
+  form.append('method', method);
+  if (timestampColumn) {
+    form.append('timestampColumn', timestampColumn);
+  }
+
+  const res = await fetch(`${API_BASE}/api/v1/analysis/scale`, { method: 'POST', body: form });
+  if (!res.ok) {
+    throw await parseError(res, 'Failed to scale data');
+  }
+  return res.json();
+}

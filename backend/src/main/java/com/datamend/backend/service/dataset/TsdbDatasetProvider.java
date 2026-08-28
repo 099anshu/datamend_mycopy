@@ -30,6 +30,6 @@ public class TsdbDatasetProvider implements DatasetProvider {
                 : datasetName;
         String filePath = "tsdb://" + cleanName;
         int columnCount = columns != null ? columns.size() : 0;
-        return new Dataset(cleanName, filePath, 0, columnCount, SOURCE_TYPE, cleanName, null, null);
+        return new Dataset(cleanName, filePath, 0, columnCount, SOURCE_TYPE, cleanName, (String) null, (java.time.OffsetDateTime) null);
     }
 }
