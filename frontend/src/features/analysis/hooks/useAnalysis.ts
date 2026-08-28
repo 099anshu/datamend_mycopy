@@ -147,7 +147,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
       clearError: () => set({ errorMessage: null }),
     }),
     {
-      name: 'datamend-config-v1',
+      name: 'datamend-config-v2',
       partialize: (state) => ({
         datasetSource: state.datasetSource,
         uploadedDatasetId: state.uploadedDatasetId,

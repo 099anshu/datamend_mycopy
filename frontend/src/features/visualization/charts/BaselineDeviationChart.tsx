@@ -12,14 +12,16 @@ interface BaselineDeviationChartProps {
   data: ProcessedTimeSeriesPoint[];
   columns: string[];
   rollingWindow: number;
-  syncGroupId?: string;
+  onChartRef?: (chart: EChartsReact | null) => void;
+  onDataZoom?: (params: { start?: number; end?: number }, chart: EChartsReact) => void;
 }
 
 export const BaselineDeviationChart: React.FC<BaselineDeviationChartProps> = ({
   data,
   columns,
   rollingWindow,
-  syncGroupId,
+  onChartRef,
+  onDataZoom,
 }) => {
   const chartRef = useRef<EChartsReact>(null);
   const [selectedColumn, setSelectedColumn] = useState<string>(columns[0] || 'OT');
@@ -31,15 +33,27 @@ export const BaselineDeviationChart: React.FC<BaselineDeviationChartProps> = ({
   }, [columns, selectedColumn]);
 
   useEffect(() => {
-    if (chartRef.current && syncGroupId) {
-      const echartInstance = chartRef.current.getEchartsInstance();
-      echartInstance.group = syncGroupId;
+    if (chartRef.current && onChartRef) {
+      onChartRef(chartRef.current);
     }
-  }, [syncGroupId]);
+    return () => {
+      if (onChartRef) onChartRef(null);
+    };
+  }, [onChartRef]);
 
   const option = useMemo(() => {
     return createBaselineDeviationOption(data, selectedColumn);
   }, [data, selectedColumn]);
+
+  const onEvents = useMemo(() => {
+    return {
+      datazoom: (params: { start?: number; end?: number }) => {
+        if (chartRef.current && onDataZoom) {
+          onDataZoom(params, chartRef.current);
+        }
+      },
+    };
+  }, [onDataZoom]);
 
   if (data.length === 0 || columns.length === 0) return null;
 
@@ -47,6 +61,7 @@ export const BaselineDeviationChart: React.FC<BaselineDeviationChartProps> = ({
     <ChartPanel
       title="Actual vs. Baseline Deviation (Observable)"
       subtitle={`True vertical delta against ${rollingWindow}-step SMA baseline`}
+      icon={<Compass size={16} />}
       height={220}
       headerActions={
         <div className="flex items-center gap-1.5">
@@ -69,6 +84,7 @@ export const BaselineDeviationChart: React.FC<BaselineDeviationChartProps> = ({
         <ReactECharts
           ref={chartRef}
           option={option}
+          onEvents={onEvents}
           style={{ height: '100%', width: '100%' }}
           notMerge={true}
           lazyUpdate={true}

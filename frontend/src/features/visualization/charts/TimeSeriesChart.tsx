@@ -17,7 +17,8 @@ interface TimeSeriesChartProps {
   onToggleRolling: () => void;
   showAnomaliesOnly: boolean;
   onToggleAnomaliesOnly: () => void;
-  syncGroupId?: string;
+  onChartRef?: (chart: EChartsReact | null) => void;
+  onDataZoom?: (params: { start?: number; end?: number }, chart: EChartsReact) => void;
 }
 
 export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
@@ -29,7 +30,8 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   onToggleRolling,
   showAnomaliesOnly,
   onToggleAnomaliesOnly,
-  syncGroupId,
+  onChartRef,
+  onDataZoom,
 }) => {
   const chartRef = useRef<EChartsReact>(null);
   const [activeColumns, setActiveColumns] = useState<string[]>(columns);
@@ -39,11 +41,13 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
   }, [columns]);
 
   useEffect(() => {
-    if (chartRef.current && syncGroupId) {
-      const echartInstance = chartRef.current.getEchartsInstance();
-      echartInstance.group = syncGroupId;
+    if (chartRef.current && onChartRef) {
+      onChartRef(chartRef.current);
     }
-  }, [syncGroupId]);
+    return () => {
+      if (onChartRef) onChartRef(null);
+    };
+  }, [onChartRef]);
 
   const toggleColumn = (col: string) => {
     setActiveColumns((prev) =>
@@ -60,15 +64,26 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     return createTimeSeriesOption(chartData, activeColumns, showRolling, rollingWindow);
   }, [chartData, activeColumns, showRolling, rollingWindow]);
 
+  const onEvents = useMemo(() => {
+    return {
+      datazoom: (params: { start?: number; end?: number }) => {
+        if (chartRef.current && onDataZoom) {
+          onDataZoom(params, chartRef.current);
+        }
+      },
+    };
+  }, [onDataZoom]);
+
   const status = data.length === 0 ? 'empty' : 'ready';
 
   return (
     <ChartPanel
       title="Multivariate Time-Series & Anomaly Overlay"
+      icon={<Layers size={16} />}
       height={360}
       status={status}
       headerActions={
-         <div className="flex flex-wrap items-center gap-1.5 justify-end min-w-0">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             className={`btn btn-secondary ${showRolling ? 'bg-slate-100 border-slate-400' : ''}`}
@@ -141,6 +156,7 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
           <ReactECharts
             ref={chartRef}
             option={option}
+            onEvents={onEvents}
             style={{ height: '100%', width: '100%' }}
             notMerge={true}
             lazyUpdate={true}

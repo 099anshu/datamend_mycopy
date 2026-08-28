@@ -21,8 +21,9 @@ public class MlServiceConfig {
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(Duration.ofSeconds(180));
-        return RestClient.builder()
-                .requestFactory(requestFactory)
-                .baseUrl(baseUrl);
+        RestClient.Builder builder = RestClient.builder();
+        builder.requestFactory(requestFactory);
+        builder.baseUrl(baseUrl);
+        return builder;
     }
 }

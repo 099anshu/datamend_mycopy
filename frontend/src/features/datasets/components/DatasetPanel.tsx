@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Database, RotateCcw } from 'lucide-react';
 import { Panel } from '@/shared/ui';
 import { DATASET_PRESETS } from '@/lib/config';
@@ -11,6 +11,7 @@ import { ColumnMapper } from './ColumnMapper';
 import { useDatasetSelection } from '../hooks/useDatasetSelection';
 import { getDatasetApi, useUploadedDatasetsQuery } from '../services/datasetApi';
 import { UploadedDataset } from '../services/schemas';
+import type { DatasetSource } from '../services/schemas';
 
 export const DatasetPanel: React.FC = () => {
   const {
@@ -27,6 +28,22 @@ export const DatasetPanel: React.FC = () => {
     setSelectedColumns,
     blockingReason,
   } = useDatasetSelection();
+
+  // Local tab state so the switch is instant regardless of store timing
+  const [activeTab, setActiveTab] = useState<DatasetSource>(datasetSource);
+
+  // Keep local tab in sync if the store changes externally (e.g. hydration)
+  useEffect(() => {
+    setActiveTab(datasetSource);
+  }, [datasetSource]);
+
+  const handleTabChange = useCallback(
+    (tab: DatasetSource) => {
+      setActiveTab(tab);
+      setDatasetSource(tab);
+    },
+    [setDatasetSource]
+  );
 
   const datasetName = useAnalysisStore((s) => s.datasetName);
   const setDatasetName = useAnalysisStore((s) => s.setDatasetName);
@@ -72,22 +89,22 @@ export const DatasetPanel: React.FC = () => {
           <button
             type="button"
             className="source-tab"
-            data-active={datasetSource === 'upload'}
-            onClick={() => setDatasetSource('upload')}
+            data-active={activeTab === 'upload'}
+            onClick={() => handleTabChange('upload')}
           >
             Upload
           </button>
           <button
             type="button"
             className="source-tab"
-            data-active={datasetSource === 'tsdb'}
-            onClick={() => setDatasetSource('tsdb')}
+            data-active={activeTab === 'tsdb'}
+            onClick={() => handleTabChange('tsdb')}
           >
             Built-in (TSDB)
           </button>
         </div>
 
-        {datasetSource === 'upload' ? (
+        {activeTab === 'upload' ? (
           <>
             <DatasetUpload onUploaded={handleUploaded} />
 

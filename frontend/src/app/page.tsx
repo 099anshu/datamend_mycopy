@@ -2,7 +2,6 @@
 
 import React, { useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
-import { DatasetPanel } from '@/features/datasets';
 import {
   AnalysisConfig,
   useAnalysisStore,
@@ -11,6 +10,7 @@ import {
   startAnalysisApi,
   AnalysisRequestPayload,
 } from '@/features/analysis';
+import { DatasetPanel } from '@/features/datasets';
 import {
   TimeSeriesChart,
   ScoreCurveChart,
@@ -27,7 +27,7 @@ import { AlertCircle, Radio } from 'lucide-react';
 export default function DashboardPage() {
   const store = useAnalysisStore();
   const chartData = useChartData();
-  const syncGroupId = useChartSync(true);
+  const { registerChart, unregisterChart, onDataZoom } = useChartSync();
 
   useAnalysisSSE({
     analysisId: store.activeAnalysisId,
@@ -95,7 +95,6 @@ export default function DashboardPage() {
       <Navbar status={store.status} statusMessage={store.statusMessage} />
 
       <main style={{ flex: 1, padding: 16, maxWidth: 1680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
-
         {/* Error alert */}
         {store.errorMessage && (
           <div
@@ -153,23 +152,13 @@ export default function DashboardPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '320px 1fr',
+            gridTemplateColumns: '280px 1fr',
             gap: 16,
             alignItems: 'start',
           }}
         >
           {/* Sidebar */}
-          <div
-            style={{
-              position: 'sticky',
-              top: 72,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 14,
-              maxHeight: 'calc(100vh - 88px)',
-              overflowY: 'auto',
-            }}
-          >
+          <div style={{ position: 'sticky', top: 72, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <DatasetPanel />
             <AnalysisConfig
               onFetchScores={handleFetchScores}
@@ -196,20 +185,23 @@ export default function DashboardPage() {
               onToggleRolling={() => store.setShowRolling(!store.showRolling)}
               showAnomaliesOnly={store.showAnomaliesOnly}
               onToggleAnomaliesOnly={() => store.setShowAnomaliesOnly(!store.showAnomaliesOnly)}
-              syncGroupId={syncGroupId}
+              onChartRef={(chart) => (chart ? registerChart(chart) : unregisterChart(chart))}
+              onDataZoom={onDataZoom}
             />
 
             <ScoreCurveChart
               data={chartData}
               threshold={store.threshold}
-              syncGroupId={syncGroupId}
+              onChartRef={(chart) => (chart ? registerChart(chart) : unregisterChart(chart))}
+              onDataZoom={onDataZoom}
             />
 
             <BaselineDeviationChart
               data={chartData}
               columns={store.activeColumns}
               rollingWindow={store.rollingWindow}
-              syncGroupId={syncGroupId}
+              onChartRef={(chart) => (chart ? registerChart(chart) : unregisterChart(chart))}
+              onDataZoom={onDataZoom}
             />
 
             <HeatmapChart data={chartData} columns={store.activeColumns} />

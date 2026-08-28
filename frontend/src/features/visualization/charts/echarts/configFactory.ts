@@ -19,12 +19,10 @@ export const HEATMAP_GRADIENT = [
   '#d32f2f', // Critical Anomaly
 ];
 
-export const createConnectedGroupId = () => `datamend-sync-group`;
-
 export const createBaseOption = (): Partial<EChartsOption> => ({
   color: ECHARTS_PALETTE,
   backgroundColor: 'transparent',
-  animationDuration: 250,
+  animationDuration: 200,
   animationEasing: 'cubicOut',
   grid: {
     top: 24,
@@ -63,7 +61,6 @@ export const createTimeSeriesOption = (
   rollingWindow: number = 24
 ): EChartsOption => {
   const timestamps = data.map((d) => d.formattedTime);
-
   const seriesList: EChartsOption['series'] = [];
 
   columns.forEach((col, idx) => {
@@ -147,16 +144,9 @@ export const createScoreCurveOption = (
       borderColor: '#d7dbe0',
       padding: [6, 10],
       textStyle: { color: '#1a1a1a', fontSize: 11 },
-      formatter: (params: unknown) => {
-        if (!Array.isArray(params) || params.length === 0) return '';
-        const item = params[0] as { dataIndex: number; value: number };
-        const pt = data[item.dataIndex];
-        const isAnomaly = (pt?.score ?? 0) >= threshold;
-        return `
-          <div style="font-weight:700; margin-bottom: 2px;">${pt?.timestamp || ''}</div>
-          <div>Score: <strong style="color: ${isAnomaly ? '#d32f2f' : '#1a56c4'}">${(pt?.score ?? 0).toFixed(4)}</strong></div>
-          ${isAnomaly ? '<div style="color:#d32f2f; font-weight:700; font-size:10px;">ANOMALY TRIGGERED</div>' : ''}
-        `;
+      axisPointer: {
+        type: 'cross',
+        lineStyle: { color: '#94a3b8', type: 'dashed' },
       },
     },
     xAxis: {
@@ -229,15 +219,8 @@ export const createBaselineDeviationOption = (
       borderColor: '#d7dbe0',
       padding: [6, 10],
       textStyle: { color: '#1a1a1a', fontSize: 11 },
-      formatter: (params: unknown) => {
-        if (!Array.isArray(params) || params.length === 0) return '';
-        const item = params[0] as { dataIndex: number; value: number };
-        const pt = data[item.dataIndex];
-        const val = typeof pt[diffKey] === 'number' ? (pt[diffKey] as number) : 0;
-        return `
-          <div style="font-weight:700; margin-bottom: 2px;">${pt.timestamp}</div>
-          <div>Delta (${column}): <strong style="color: ${val >= 0 ? '#1a56c4' : '#5b6472'}">${val > 0 ? `+${val.toFixed(3)}` : val.toFixed(3)}</strong></div>
-        `;
+      axisPointer: {
+        type: 'shadow',
       },
     },
     xAxis: {
@@ -254,12 +237,12 @@ export const createBaselineDeviationOption = (
     },
     series: [
       {
-        name: 'Delta',
+        name: `Delta (${column})`,
         type: 'bar',
         data: diffValues.map((val, idx) => ({
           value: val,
           itemStyle: {
-            color: data[idx].isAnomaly ? '#d32f2f' : val >= 0 ? '#1a56c4' : '#5b6472',
+            color: data[idx]?.isAnomaly ? '#d32f2f' : val >= 0 ? '#1a56c4' : '#5b6472',
           },
         })),
         sampling: 'lttb',

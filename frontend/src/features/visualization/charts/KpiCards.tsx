@@ -90,7 +90,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <span
                 style={{
-                  fontSize: '0.8rem',
+                  fontSize: '0.7rem',
                   fontWeight: 500,
                   textTransform: 'uppercase',
                   color: '#64748b',

@@ -84,14 +84,9 @@ def profile_dataframe(df: pd.DataFrame, timestamp_column: Optional[str] = None, 
     Args:
         df: DataFrame to profile
         timestamp_column: Optional timestamp column name
-        is_ts_file: Whether this is a .ts file (timestamps are auto-generated)
     """
-    if timestamp_column is None and not is_ts_file:
+    if timestamp_column is None:
         timestamp_column = detect_timestamp_column(df)
-    
-    # For .ts files, timestamp is auto-generated and not in the columns
-    if is_ts_file:
-        timestamp_column = "auto_generated"
 
     columns = [_profile_column(df[column], column == timestamp_column) for column in df.columns]
     signal_columns: List[str] = [column.name for column in columns if column.kind == "numeric"]
