@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Type
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 from corruption.pygrinder import (
     CorruptionConfigError,
@@ -12,9 +12,22 @@ from corruption.pygrinder import (
     calc_missing_rate,
     handle_missing_values,
 )
-from datasets.tsdb_loader import TsdbLoadError, load_tsdb_dataset
+from datasets.loader import load_dataset
+from datasets.tsdb_loader import TsdbLoadError, list_tsdb_datasets
+from datasets.upload_store import (
+    UnknownDatasetError,
+    UploadError,
+    get_metadata,
+    list_uploads,
+    save_upload,
+)
 from detectors.base import AnomalyDetector
 from detectors.timercd import TimeRCDDetector
+from schemas.dataset import (
+    DatasetProfile,
+    UploadedDatasetResponse,
+    UploadedDatasetSummary,
+)
 from schemas.analysis import (
     AnalysisRequest,
     AnalyzeRequest,
@@ -54,7 +67,9 @@ def _load_analysis_data(
     request: AnalysisRequest,
 ) -> tuple[pd.DataFrame, object, List[datetime], Optional[float], str]:
     try:
-        df = load_tsdb_dataset(request.datasetName)
+        df = load_dataset(request.source, request.datasetName, request.timestampColumn)
+    except UnknownDatasetError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except TsdbLoadError as exc:
@@ -161,4 +176,50 @@ def scores(request: ScoresRequest) -> ScoresResponse:
         scores=series,
         missingRate=missing_rate,
         missingValueHandling=strategy,
+    )
+
+
+@app.get("/api/v1/datasets", response_model=List[UploadedDatasetSummary])
+def list_datasets() -> List[UploadedDatasetSummary]:
+    return list_uploads()
+
+
+@app.get("/api/v1/datasets/sources/tsdb", response_model=List[str])
+def list_tsdb_sources() -> List[str]:
+    return list_tsdb_datasets()
+
+
+@app.post("/api/v1/datasets", response_model=UploadedDatasetResponse, status_code=201)
+async def upload_dataset(
+    file: UploadFile = File(...),
+    timestampColumn: Optional[str] = Form(default=None),
+) -> UploadedDatasetResponse:
+    content = await file.read()
+    try:
+        dataset_id, profile, uploaded_at = save_upload(
+            file.filename or "dataset.csv", content, timestampColumn
+        )
+    except UploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return UploadedDatasetResponse(
+        datasetId=dataset_id,
+        name=file.filename or "dataset.csv",
+        uploadedAt=uploaded_at,
+        profile=profile,
+    )
+
+
+@app.get("/api/v1/datasets/{dataset_id}", response_model=UploadedDatasetResponse)
+def get_dataset(dataset_id: str) -> UploadedDatasetResponse:
+    try:
+        metadata = get_metadata(dataset_id)
+    except UnknownDatasetError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    return UploadedDatasetResponse(
+        datasetId=metadata["datasetId"],
+        name=metadata["name"],
+        uploadedAt=datetime.fromisoformat(metadata["uploadedAt"]),
+        profile=DatasetProfile.model_validate(metadata["profile"]),
     )

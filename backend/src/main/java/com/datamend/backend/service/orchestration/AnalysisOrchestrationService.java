@@ -52,7 +52,8 @@ public class AnalysisOrchestrationService {
 
     @Transactional
     public UUID startAnalysis(AnalysisRequestDto mlRequest) {
-        Dataset dataset = datasetService.getOrCreateDataset(mlRequest.datasetName(), mlRequest.columns());
+        Dataset dataset = datasetService.getOrCreateDataset(
+                mlRequest.source(), mlRequest.datasetName(), mlRequest.columns());
 
         Analysis analysis = new Analysis(dataset.getId(), AnalysisStatus.RUNNING, mlRequest.detector());
         analysis.setStartedAt(OffsetDateTime.now());

@@ -49,6 +49,8 @@ export function usePipelineConfig() {
       datasetName: datasetName.trim() || 'ETTh1',
       columns: columns.length > 0 ? columns : ['HUFL', 'HULL', 'MUFL', 'MULL', 'LUFL', 'LULL', 'OT'],
       detector,
+      source: 'tsdb',
+      timestampColumn: null,
       threshold,
       corruption: corruptionEnabled
         ? {

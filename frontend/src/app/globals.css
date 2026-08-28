@@ -266,3 +266,54 @@ textarea.form-input {
 .code-font {
   font-family: 'JetBrains Mono', monospace;
 }
+
+@keyframes datamend-spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: datamend-spin 1s linear infinite;
+}
+
+/* Column mapping */
+.column-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  font-size: 0.75rem;
+  color: #0f172a;
+  background-color: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.column-toggle:hover {
+  border-color: var(--accent);
+}
+
+.column-toggle[data-selected='true'] {
+  border-color: var(--accent);
+  background-color: var(--status-info-bg);
+}
+
+.source-tab {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5b6472;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.source-tab[data-active='true'] {
+  color: #ffffff;
+  background-color: var(--accent);
+}

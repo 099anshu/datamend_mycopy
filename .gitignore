@@ -52,3 +52,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Uploaded datasets (ml-service)
+ml-service/data/

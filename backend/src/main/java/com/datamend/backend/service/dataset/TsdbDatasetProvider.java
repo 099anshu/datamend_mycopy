@@ -11,23 +11,25 @@ import java.util.List;
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class TsdbDatasetProvider implements DatasetProvider {
 
+    public static final String SOURCE_TYPE = "TSDB";
+
     @Override
     public String getSourceType() {
-        return "TSDB";
+        return SOURCE_TYPE;
     }
 
     @Override
-    public boolean supports(String datasetName) {
-        return datasetName != null && !datasetName.isBlank();
+    public boolean supports(String sourceType) {
+        return sourceType == null || sourceType.isBlank() || SOURCE_TYPE.equalsIgnoreCase(sourceType);
     }
 
     @Override
     public Dataset resolveDataset(String datasetName, List<String> columns) {
-        String cleanName = datasetName.startsWith("tsdb://") 
-                ? datasetName.substring(7) 
+        String cleanName = datasetName.startsWith("tsdb://")
+                ? datasetName.substring(7)
                 : datasetName;
         String filePath = "tsdb://" + cleanName;
         int columnCount = columns != null ? columns.size() : 0;
-        return new Dataset(cleanName, filePath, 0, columnCount);
+        return new Dataset(cleanName, filePath, 0, columnCount, SOURCE_TYPE, cleanName, null, null);
     }
 }

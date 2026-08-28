@@ -7,6 +7,21 @@ import {
   ScoresResponse,
   AnomalyItem,
 } from '../services/schemas';
+import { DatasetProfile, DatasetSource } from '@/features/datasets/services/schemas';
+
+interface DatasetSlice {
+  datasetSource: DatasetSource;
+  uploadedDatasetId: string | null;
+  uploadedDatasetName: string | null;
+  uploadedProfile: DatasetProfile | null;
+  timestampColumn: string | null;
+
+  setDatasetSource: (source: DatasetSource) => void;
+  selectUploadedDataset: (
+    dataset: { datasetId: string; name: string; profile: DatasetProfile } | null
+  ) => void;
+  setTimestampColumn: (column: string | null) => void;
+}
 
 interface ConfigSlice {
   datasetName: string;
@@ -54,7 +69,15 @@ interface AnalysisSlice {
   clearError: () => void;
 }
 
-export type AnalysisStore = ConfigSlice & AnalysisSlice;
+export type AnalysisStore = DatasetSlice & ConfigSlice & AnalysisSlice;
+
+const initialDataset = {
+  datasetSource: 'tsdb' as DatasetSource,
+  uploadedDatasetId: null,
+  uploadedDatasetName: null,
+  uploadedProfile: null,
+  timestampColumn: null,
+};
 
 const initialConfig = {
   datasetName: 'ETTh1',
@@ -73,7 +96,24 @@ const initialConfig = {
 export const useAnalysisStore = create<AnalysisStore>()(
   persist(
     (set) => ({
+      ...initialDataset,
       ...initialConfig,
+
+      setDatasetSource: (datasetSource) => set({ datasetSource }),
+      selectUploadedDataset: (dataset) =>
+        set(
+          dataset === null
+            ? { ...initialDataset, datasetSource: 'upload' }
+            : {
+                datasetSource: 'upload',
+                uploadedDatasetId: dataset.datasetId,
+                uploadedDatasetName: dataset.name,
+                uploadedProfile: dataset.profile,
+                timestampColumn: dataset.profile.timestampColumn ?? null,
+                columnsInput: dataset.profile.signalColumns.join(','),
+              }
+        ),
+      setTimestampColumn: (timestampColumn) => set({ timestampColumn }),
 
       setDatasetName: (datasetName) => set({ datasetName }),
       setColumnsInput: (columnsInput) => set({ columnsInput }),
@@ -86,7 +126,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
       setRollingWindow: (rollingWindow) => set({ rollingWindow }),
       setShowRolling: (showRolling) => set({ showRolling }),
       setShowAnomaliesOnly: (showAnomaliesOnly) => set({ showAnomaliesOnly }),
-      resetConfig: () => set({ ...initialConfig }),
+      resetConfig: () => set({ ...initialDataset, ...initialConfig }),
 
       // Analysis State
       activeAnalysisId: null,
@@ -109,6 +149,11 @@ export const useAnalysisStore = create<AnalysisStore>()(
     {
       name: 'datamend-config-v1',
       partialize: (state) => ({
+        datasetSource: state.datasetSource,
+        uploadedDatasetId: state.uploadedDatasetId,
+        uploadedDatasetName: state.uploadedDatasetName,
+        uploadedProfile: state.uploadedProfile,
+        timestampColumn: state.timestampColumn,
         datasetName: state.datasetName,
         columnsInput: state.columnsInput,
         detector: state.detector,
