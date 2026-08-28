@@ -70,7 +70,7 @@ public class AnalysisController {
         // If already completed or failed, emit terminal state and complete
         if (analysis.getStatus() == AnalysisStatus.COMPLETED) {
             SseEmitter completedEmitter = new SseEmitter(5000L);
-            var anomalies = anomalyRepository.findByAnalysisId(id);
+            var anomalies = anomalyRepository.findByAnalysisId(analysisId);
             AnalysisResponseDto response = AnalysisMapper.toResponse(analysis, anomalies);
             try {
                 completedEmitter.send(SseEmitter.event().name("completed").data(response));
@@ -91,6 +91,6 @@ public class AnalysisController {
         }
 
         // Active analysis -> register emitter for real-time events
-        return eventService.registerEmitter(id);
+        return eventService.registerEmitter(analysisId);
     }
 }

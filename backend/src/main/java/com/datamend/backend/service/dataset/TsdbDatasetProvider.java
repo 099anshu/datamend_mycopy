@@ -7,9 +7,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * Default provider for TSDB-managed datasets (e.g. ETTh1, ETTh2, ETTm1, electricity, weather).
- */
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class TsdbDatasetProvider implements DatasetProvider {
@@ -21,7 +18,6 @@ public class TsdbDatasetProvider implements DatasetProvider {
 
     @Override
     public boolean supports(String datasetName) {
-        // Fallback default provider for standard dataset identifiers and tsdb:// schemes
         return datasetName != null && !datasetName.isBlank();
     }
 

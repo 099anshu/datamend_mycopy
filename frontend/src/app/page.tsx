@@ -1,205 +1,210 @@
 'use client';
 
-import React from 'react';
-import dynamic from 'next/dynamic';
+import React, { useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
-import { ConfigSidebar } from '@/components/ConfigSidebar';
-import { KpiSummaryCards } from '@/components/KpiSummaryCards';
-import { AnomaliesTable } from '@/components/AnomaliesTable';
-import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { useDashboardState } from '@/hooks/useDashboardState';
+import {
+  AnalysisConfig,
+  useAnalysisStore,
+  useAnalysisSSE,
+  fetchScoresApi,
+  startAnalysisApi,
+  AnalysisRequestPayload,
+} from '@/features/analysis';
+import {
+  TimeSeriesChart,
+  ScoreCurveChart,
+  BaselineDeviationChart,
+  HeatmapChart,
+  SeverityCharts,
+  KpiCards,
+  AnomaliesTable,
+  useChartData,
+  useChartSync,
+} from '@/features/visualization';
 import { AlertCircle, Radio } from 'lucide-react';
 
-// Dynamic lazy loading for heavy SVG charting modules with fallback skeletons
-const TimeSeriesMultiChart = dynamic(
-  () =>
-    import('@/components/TimeSeriesMultiChart').then((mod) => mod.TimeSeriesMultiChart),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="panel" style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading Time-Series Visualization...</span>
-      </div>
-    ),
-  }
-);
-
-const AnomalyScoreChart = dynamic(
-  () =>
-    import('@/components/AnomalyScoreChart').then((mod) => mod.AnomalyScoreChart),
-  { ssr: false }
-);
-
-const DifferenceBaselineChart = dynamic(
-  () =>
-    import('@/components/DifferenceBaselineChart').then((mod) => mod.DifferenceBaselineChart),
-  { ssr: false }
-);
-
-const FeatureHeatmapChart = dynamic(
-  () =>
-    import('@/components/FeatureHeatmapChart').then((mod) => mod.FeatureHeatmapChart),
-  { ssr: false }
-);
-
-const SeverityDistributionChart = dynamic(
-  () =>
-    import('@/components/SeverityDistributionChart').then((mod) => mod.SeverityDistributionChart),
-  { ssr: false }
-);
-
 export default function DashboardPage() {
-  const {
-    status,
-    statusMessage,
-    errorMessage,
-    setErrorMessage,
-    scoresData,
-    anomalies,
-    activeColumns,
-    currentThreshold,
-    rollingWindow,
-    setRollingWindow,
-    showRolling,
-    setShowRolling,
-    showAnomaliesOnly,
-    setShowAnomaliesOnly,
-    chartData,
-    isBusy,
-    handleFetchScores,
-    handleRunAnalyze,
-  } = useDashboardState();
+  const store = useAnalysisStore();
+  const chartData = useChartData();
+  const syncGroupId = useChartSync(true);
+
+  useAnalysisSSE({
+    analysisId: store.activeAnalysisId,
+    onStatus: (st) => store.setStatusMessage(`Analysis status: ${st}...`),
+    onCompleted: (res) => {
+      store.setAnomalies(res.anomalies || []);
+      store.setStatus('completed');
+      store.setStatusMessage(`Analysis completed! Found ${(res.anomalies || []).length} anomalies.`);
+    },
+    onError: (err) => {
+      store.setStatus('error');
+      store.setErrorMessage(err);
+      store.setStatusMessage('Analysis execution error');
+    },
+  });
+
+  const handleFetchScores = useCallback(
+    async (payload: AnalysisRequestPayload) => {
+      store.setStatus('loading_scores');
+      store.setStatusMessage(`Requesting scores for ${payload.datasetName}...`);
+      store.clearError();
+      store.setActiveColumns(payload.columns);
+      store.setThreshold(payload.threshold);
+      try {
+        const res = await fetchScoresApi(payload);
+        store.setScoresData(res);
+        store.setStatus('scores_ready');
+        store.setStatusMessage(`Loaded ${res.scores.length} timestamps from ${payload.datasetName}`);
+      } catch (err: unknown) {
+        store.setStatus('error');
+        store.setErrorMessage(err instanceof Error ? err.message : 'Failed to fetch scores');
+      }
+    },
+    [store]
+  );
+
+  const handleRunAnalyze = useCallback(
+    async (payload: AnalysisRequestPayload) => {
+      store.setStatus('analyzing');
+      store.setStatusMessage('Starting asynchronous analysis & SSE stream...');
+      store.clearError();
+      store.setActiveColumns(payload.columns);
+      store.setThreshold(payload.threshold);
+      try {
+        if (!store.scoresData || store.scoresData.scores.length === 0) {
+          fetchScoresApi(payload)
+            .then((res) => store.setScoresData(res))
+            .catch(() => {});
+        }
+        const job = await startAnalysisApi(payload);
+        store.setActiveAnalysisId(job.analysisId);
+        store.setStatusMessage('Streaming real-time analysis events...');
+      } catch (err: unknown) {
+        store.setStatus('error');
+        store.setErrorMessage(err instanceof Error ? err.message : 'Failed to start analysis');
+      }
+    },
+    [store]
+  );
+
+  const isBusy = store.status === 'loading_scores' || store.status === 'analyzing';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--bg-page)' }}>
-      <Navbar status={status} statusMessage={statusMessage} />
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#eef0f3' }}>
+      <Navbar status={store.status} statusMessage={store.statusMessage} />
 
-      <main role="main" style={{ flex: 1, padding: '16px 20px', maxWidth: 1680, margin: '0 auto', width: '100%' }}>
-        {/* Error Alert Box */}
-        {errorMessage && (
+      <main style={{ flex: 1, padding: 16, maxWidth: 1680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+
+        {/* Error alert */}
+        {store.errorMessage && (
           <div
-            role="alert"
             style={{
-              padding: '10px 14px',
-              marginBottom: 14,
-              backgroundColor: 'var(--status-critical-bg)',
-              border: '1px solid #fecaca',
-              borderRadius: 4,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: 10,
+              gap: 12,
+              padding: '10px 14px',
+              marginBottom: 12,
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: 6,
+              color: '#991b1b',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#991b1b' }}>
-              <AlertCircle size={15} />
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{errorMessage}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertCircle size={15} color="#ef4444" style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{store.errorMessage}</span>
             </div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setErrorMessage(null)}
-              style={{ padding: '2px 8px', fontSize: '0.6875rem' }}
-              aria-label="Dismiss error"
-            >
+            <button className="btn btn-secondary" onClick={store.clearError} style={{ padding: '3px 10px' }}>
               Dismiss
             </button>
           </div>
         )}
 
-        {/* Live SSE Status Box */}
-        {status === 'analyzing' && (
+        {/* SSE status banner */}
+        {store.status === 'analyzing' && (
           <div
-            role="status"
-            aria-live="polite"
             style={{
-              padding: '10px 14px',
-              marginBottom: 14,
-              backgroundColor: 'var(--status-info-bg)',
-              border: '1px solid #bfdbfe',
-              borderRadius: 4,
               display: 'flex',
               alignItems: 'center',
               gap: 10,
+              padding: '10px 14px',
+              marginBottom: 12,
+              backgroundColor: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: 6,
+              color: '#1e3a8a',
             }}
           >
-            <Radio size={15} color="var(--status-info)" className="animate-spin" />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#1e40af' }}>
+            <Radio size={15} color="#1a56c4" style={{ flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700 }}>
                 Real-Time Analysis in Progress
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#2563eb' }}>
-                {statusMessage}
+              <div style={{ fontSize: '0.6875rem', color: '#1a56c4' }}>
+                {store.statusMessage}
               </div>
             </div>
           </div>
         )}
 
-        {/* Main 2-Column Layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
-          {/* Left Column: Pipeline Configuration */}
-          <ConfigSidebar
-            onFetchScores={handleFetchScores}
-            onRunAnalyze={handleRunAnalyze}
-            isBusy={isBusy}
-            activeStatus={status}
-          />
+        {/* Two-column layout: sidebar + main content */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '280px 1fr',
+            gap: 16,
+            alignItems: 'start',
+          }}
+        >
+          {/* Sidebar */}
+          <div style={{ position: 'sticky', top: 72 }}>
+            <AnalysisConfig
+              onFetchScores={handleFetchScores}
+              onRunAnalyze={handleRunAnalyze}
+              isBusy={isBusy}
+            />
+          </div>
 
-          {/* Right Column: Visual Dashboard */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {/* KPI Cards */}
-            <ErrorBoundary fallbackTitle="KPI Summary Metrics Error">
-              <KpiSummaryCards
-                scores={scoresData?.scores || []}
-                anomalies={anomalies}
-                missingRate={scoresData?.missingRate}
-                missingValueHandling={scoresData?.missingValueHandling}
-                status={status}
-              />
-            </ErrorBoundary>
+          {/* Chart content area */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
+            <KpiCards
+              scores={store.scoresData?.scores || []}
+              anomalies={store.anomalies}
+              missingRate={store.scoresData?.missingRate}
+              missingValueHandling={store.scoresData?.missingValueHandling}
+            />
 
-            {/* Primary Time Series Visualization */}
-            <ErrorBoundary fallbackTitle="Multi-Series Chart Error">
-              <TimeSeriesMultiChart
-                data={chartData}
-                columns={activeColumns}
-                rollingWindow={rollingWindow}
-                onRollingWindowChange={setRollingWindow}
-                showRolling={showRolling}
-                onToggleRolling={() => setShowRolling((v) => !v)}
-                showAnomaliesOnly={showAnomaliesOnly}
-                onToggleAnomaliesOnly={() => setShowAnomaliesOnly((v) => !v)}
-              />
-            </ErrorBoundary>
+            <TimeSeriesChart
+              data={chartData}
+              columns={store.activeColumns}
+              rollingWindow={store.rollingWindow}
+              onRollingWindowChange={store.setRollingWindow}
+              showRolling={store.showRolling}
+              onToggleRolling={() => store.setShowRolling(!store.showRolling)}
+              showAnomaliesOnly={store.showAnomaliesOnly}
+              onToggleAnomaliesOnly={() => store.setShowAnomaliesOnly(!store.showAnomaliesOnly)}
+              syncGroupId={syncGroupId}
+            />
 
-            {/* TimeRCD Anomaly Score Curve & Cutoff Boundary */}
-            <ErrorBoundary fallbackTitle="Score Boundary Chart Error">
-              <AnomalyScoreChart data={chartData} threshold={currentThreshold} />
-            </ErrorBoundary>
+            <ScoreCurveChart
+              data={chartData}
+              threshold={store.threshold}
+              syncGroupId={syncGroupId}
+            />
 
-            {/* Baseline Deviation / Actual vs Perceived Difference (Observable Insight) */}
-            <ErrorBoundary fallbackTitle="Baseline Deviation Chart Error">
-              <DifferenceBaselineChart
-                data={chartData}
-                columns={activeColumns}
-                rollingWindow={rollingWindow}
-              />
-            </ErrorBoundary>
+            <BaselineDeviationChart
+              data={chartData}
+              columns={store.activeColumns}
+              rollingWindow={store.rollingWindow}
+              syncGroupId={syncGroupId}
+            />
 
-            {/* Feature × Time Anomaly Matrix Heatmap */}
-            <ErrorBoundary fallbackTitle="Feature Heatmap Error">
-              <FeatureHeatmapChart data={chartData} columns={activeColumns} />
-            </ErrorBoundary>
+            <HeatmapChart data={chartData} columns={store.activeColumns} />
 
-            {/* Severity and Column Breakdown Charts */}
-            <ErrorBoundary fallbackTitle="Severity Distribution Error">
-              <SeverityDistributionChart anomalies={anomalies} columns={activeColumns} />
-            </ErrorBoundary>
+            <SeverityCharts anomalies={store.anomalies} columns={store.activeColumns} />
 
-            {/* Detailed Anomalies Table */}
-            <ErrorBoundary fallbackTitle="Anomalies Table Error">
-              <AnomaliesTable anomalies={anomalies} />
-            </ErrorBoundary>
+            <AnomaliesTable anomalies={store.anomalies} />
           </div>
         </div>
       </main>
