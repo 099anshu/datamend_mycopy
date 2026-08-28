@@ -2,6 +2,7 @@
 
 import React, { useCallback } from 'react';
 import { Navbar } from '@/components/Navbar';
+import { DatasetPanel } from '@/features/datasets';
 import {
   AnalysisConfig,
   useAnalysisStore,
@@ -152,13 +153,24 @@ export default function DashboardPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '280px 1fr',
+            gridTemplateColumns: '320px 1fr',
             gap: 16,
             alignItems: 'start',
           }}
         >
           {/* Sidebar */}
-          <div style={{ position: 'sticky', top: 72 }}>
+          <div
+            style={{
+              position: 'sticky',
+              top: 72,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+              maxHeight: 'calc(100vh - 88px)',
+              overflowY: 'auto',
+            }}
+          >
+            <DatasetPanel />
             <AnalysisConfig
               onFetchScores={handleFetchScores}
               onRunAnalyze={handleRunAnalyze}

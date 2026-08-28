@@ -22,13 +22,19 @@ public class DatasetService {
     }
 
     @Transactional
-    public Dataset getOrCreateDataset(String datasetName, List<String> columns) {
+    public Dataset getOrCreateDataset(String sourceType, String datasetName, List<String> columns) {
         DatasetProvider matchedProvider = providers.stream()
-                .filter(p -> p.supports(datasetName))
+                .filter(p -> p.supports(sourceType))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No dataset provider found for dataset: " + datasetName));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No dataset provider found for source: " + sourceType));
 
-        Dataset dataset = matchedProvider.resolveDataset(datasetName, columns);
-        return datasetRepository.save(dataset);
+        Dataset resolved = matchedProvider.resolveDataset(datasetName, columns);
+        if (resolved.getExternalId() == null) {
+            return datasetRepository.save(resolved);
+        }
+        return datasetRepository
+                .findBySourceTypeAndExternalId(resolved.getSourceType(), resolved.getExternalId())
+                .orElseGet(() -> datasetRepository.save(resolved));
     }
 }
