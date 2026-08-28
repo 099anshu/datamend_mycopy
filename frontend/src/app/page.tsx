@@ -136,15 +136,9 @@ export default function DashboardPage() {
               color: '#1e3a8a',
             }}
           >
-            <Radio size={15} color="#1a56c4" style={{ flexShrink: 0 }} />
-            <div>
               <div style={{ fontSize: '0.75rem', fontWeight: 700 }}>
-                Real-Time Analysis in Progress
+                Analysis in Progress
               </div>
-              <div style={{ fontSize: '0.6875rem', color: '#1a56c4' }}>
-                {store.statusMessage}
-              </div>
-            </div>
           </div>
         )}
 
