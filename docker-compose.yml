@@ -1,0 +1,12 @@
+services:
+  ui:
+    build: .
+    ports: ["8501:8501"]
+    volumes: ["./data:/app/data", "./outputs:/app/outputs"]
+    restart: unless-stopped
+  api:
+    build: .
+    command: uvicorn api:app --host 0.0.0.0 --port 8000
+    ports: ["8000:8000"]
+    environment: [SKYGUARD_API_KEY=${SKYGUARD_API_KEY:-}]
+    restart: unless-stopped

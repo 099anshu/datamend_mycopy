@@ -1,0 +1,11 @@
+file,url,bytes,sha256,downloaded
+data/raw/uscrn/2022/CRNH0203-2022-CO_Boulder_14_W.txt,https://www.ncei.noaa.gov/pub/data/uscrn/products/hourly02/,2137440,e2c8b22fcef736cc3a287bde5a3267af4be2985026cd1802ecd65b5a9f6e9cc5,2026-10-03
+data/raw/uscrn/2025/CRNH0203-2025-CO_Boulder_14_W.txt,https://www.ncei.noaa.gov/pub/data/uscrn/products/hourly02/,2137440,b2c5b5342d6c7e7d8db66708f453b6d05ec8dd88c2115ae2da9f04d7515cb3ce,2026-10-03
+data/raw/uscrn/2024/CRNH0203-2024-CO_Boulder_14_W.txt,https://www.ncei.noaa.gov/pub/data/uscrn/products/hourly02/,2143296,66863f27832be77e646944022e4085a1135799853430e428c4d27939593b48af,2026-10-03
+data/raw/uscrn/2023/CRNH0203-2023-CO_Boulder_14_W.txt,https://www.ncei.noaa.gov/pub/data/uscrn/products/hourly02/,2137440,db472400baedd545dfab49ed7db33b7da78deb9cc29faaa5821afc51e98b896b,2026-10-03
+data/raw/uscrn/2021/CRNH0203-2021-CO_Boulder_14_W.txt,https://www.ncei.noaa.gov/pub/data/uscrn/products/hourly02/,2137440,b1c389b5f45c7312d243b06cc1f8cca5dd971687d6a0c79defee9f1a1ed9aa11,2026-10-03
+data/raw/imd_tmax/tmax/2024.GRD,https://imdpune.gov.in/lrfindex.php/training/imsp/cmpg/Griddata/Max_1_Bin.html,1406904,de50b8732a3e0fd7dea29a9c5604ca78b5c02e78b8164fb20ad2f6e00ed4c017,2026-10-03
+data/raw/imd_tmax/tmax/2020.GRD,https://imdpune.gov.in/lrfindex.php/training/imsp/cmpg/Griddata/Max_1_Bin.html,1406904,f77b8b50582c400eca0510a1738050ab10bf628b648f5a7a9e9d3c7842637ba8,2026-10-03
+data/raw/imd_tmax/tmax/2021.GRD,https://imdpune.gov.in/lrfindex.php/training/imsp/cmpg/Griddata/Max_1_Bin.html,1403060,d869f0277dcc3b2038421f3a20a2ebf82cd7889dd553742577eda8f7603036dc,2026-10-03
+data/raw/imd_tmax/tmax/2023.GRD,https://imdpune.gov.in/lrfindex.php/training/imsp/cmpg/Griddata/Max_1_Bin.html,1403060,3279af28be8f222970dc0a48cb9530228ca55ae136a26020291de59d618d982b,2026-10-03
+data/raw/imd_tmax/tmax/2022.GRD,https://imdpune.gov.in/lrfindex.php/training/imsp/cmpg/Griddata/Max_1_Bin.html,1403060,b8340004e3c13e7b1b0a9ff14d03771bbfe048b64db92fb7e23260c2f52ca214,2026-10-03
